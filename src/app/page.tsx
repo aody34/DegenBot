@@ -275,13 +275,21 @@ export default function LandingPage() {
                             <a href="#docs" className="text-muted-foreground hover:text-foreground transition-colors">Docs</a>
                         </div>
 
-                        <button
-                            onClick={() => setWaitlistOpen(true)}
-                            className="btn-primary text-sm"
-                        >
-                            Join Waitlist
-                            <ArrowRight className="w-4 h-4 ml-2" />
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <Link
+                                href="/dashboard"
+                                className="btn-outline text-sm"
+                            >
+                                Try Demo
+                            </Link>
+                            <button
+                                onClick={() => setWaitlistOpen(true)}
+                                className="btn-primary text-sm"
+                            >
+                                Join Waitlist
+                                <ArrowRight className="w-4 h-4 ml-2" />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </nav>
@@ -331,9 +339,10 @@ export default function LandingPage() {
                             Join Waitlist
                             <Rocket className="w-5 h-5 ml-2" />
                         </button>
-                        <a href="#how-it-works" className="btn-outline text-lg px-8 py-4">
-                            See How It Works
-                        </a>
+                        <Link href="/dashboard" className="btn-outline text-lg px-8 py-4">
+                            Try Demo
+                            <ArrowRight className="w-5 h-5 ml-2" />
+                        </Link>
                     </motion.div>
 
                     {/* Beta Notice */}
@@ -555,10 +564,10 @@ export default function LandingPage() {
                                     onClick={() => !plan.comingSoon && setWaitlistOpen(true)}
                                     disabled={plan.comingSoon}
                                     className={`w-full py-3 rounded-lg font-semibold transition-all ${plan.comingSoon
-                                            ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                                            : plan.popular
-                                                ? 'bg-primary text-primary-foreground hover:opacity-90'
-                                                : 'border border-border hover:bg-muted'
+                                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                                        : plan.popular
+                                            ? 'bg-primary text-primary-foreground hover:opacity-90'
+                                            : 'border border-border hover:bg-muted'
                                         }`}
                                 >
                                     {plan.cta}
