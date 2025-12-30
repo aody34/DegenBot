@@ -116,8 +116,9 @@ const pricingPlans = [
             'Public RPC nodes',
             'Community support',
         ],
-        cta: 'Join Waitlist',
-        popular: false,
+        cta: 'Get Started Free',
+        popular: true,
+        comingSoon: false,
     },
     {
         name: 'Pro',
@@ -132,8 +133,9 @@ const pricingPlans = [
             'Priority support',
             'No monthly fees',
         ],
-        cta: 'Join Waitlist',
-        popular: true,
+        cta: 'Coming Soon',
+        popular: false,
+        comingSoon: true,
     },
     {
         name: 'Whale',
@@ -148,8 +150,9 @@ const pricingPlans = [
             'API access',
             '24/7 priority support',
         ],
-        cta: 'Join Waitlist',
+        cta: 'Coming Soon',
         popular: false,
+        comingSoon: true,
     },
 ];
 
@@ -549,10 +552,13 @@ export default function LandingPage() {
                                     ))}
                                 </ul>
                                 <button
-                                    onClick={() => setWaitlistOpen(true)}
-                                    className={`w-full py-3 rounded-lg font-semibold transition-all ${plan.popular
-                                            ? 'bg-primary text-primary-foreground hover:opacity-90'
-                                            : 'border border-border hover:bg-muted'
+                                    onClick={() => !plan.comingSoon && setWaitlistOpen(true)}
+                                    disabled={plan.comingSoon}
+                                    className={`w-full py-3 rounded-lg font-semibold transition-all ${plan.comingSoon
+                                            ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                                            : plan.popular
+                                                ? 'bg-primary text-primary-foreground hover:opacity-90'
+                                                : 'border border-border hover:bg-muted'
                                         }`}
                                 >
                                     {plan.cta}
@@ -590,23 +596,21 @@ export default function LandingPage() {
                         </p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <a
-                                href="https://docs.degenbot.io"
+                                href="https://github.com/aody34/DegenBot"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="btn-primary"
                             >
-                                Read the Docs
-                                <ExternalLink className="w-4 h-4 ml-2" />
-                            </a>
-                            <a
-                                href="https://github.com/aody34/DegenBot"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn-outline"
-                            >
                                 View on GitHub
                                 <ExternalLink className="w-4 h-4 ml-2" />
                             </a>
+                            <button
+                                onClick={() => setWaitlistOpen(true)}
+                                className="btn-outline"
+                            >
+                                Join Waitlist for Docs Access
+                                <ArrowRight className="w-4 h-4 ml-2" />
+                            </button>
                         </div>
                     </motion.div>
                 </div>
@@ -668,10 +672,10 @@ export default function LandingPage() {
                             </ul>
                         </div>
                         <div>
-                            <h4 className="font-semibold mb-4">Legal</h4>
+                            <h4 className="font-semibold mb-4">Support</h4>
                             <ul className="space-y-2 text-sm text-muted-foreground">
-                                <li><a href="#" className="hover:text-foreground transition-colors">Terms of Service</a></li>
-                                <li><a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
+                                <li><a href="https://github.com/aody34/DegenBot" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a></li>
+                                <li><button onClick={() => setWaitlistOpen(true)} className="hover:text-foreground transition-colors">Contact Us</button></li>
                             </ul>
                         </div>
                     </div>
