@@ -243,8 +243,127 @@ function WaitlistModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     );
 }
 
+// Contact Modal Component
+function ContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+    const [email, setEmail] = useState('');
+    const [inquiryType, setInquiryType] = useState('');
+    const [message, setMessage] = useState('');
+    const [submitted, setSubmitted] = useState(false);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        // In production, send to your backend/Supabase
+        console.log('Contact form:', { email, inquiryType, message });
+        setSubmitted(true);
+        setTimeout(() => {
+            onClose();
+            setSubmitted(false);
+            setEmail('');
+            setInquiryType('');
+            setMessage('');
+        }, 3000);
+    };
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+                        onClick={onClose}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md max-h-[90vh] overflow-y-auto"
+                    >
+                        <div className="glass rounded-2xl p-8 border border-primary/20">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                                        <Bell className="w-5 h-5 text-white" />
+                                    </div>
+                                    <h3 className="text-xl font-bold">Contact Us</h3>
+                                </div>
+                                <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {submitted ? (
+                                <div className="text-center py-8">
+                                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                                        <Check className="w-8 h-8 text-primary" />
+                                    </div>
+                                    <h4 className="text-lg font-semibold mb-2">Message Sent!</h4>
+                                    <p className="text-muted-foreground">We'll get back to you within 24-48 hours.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <p className="text-muted-foreground mb-6">
+                                        Have a question, bug report, or partnership inquiry? We'd love to hear from you.
+                                    </p>
+                                    <form onSubmit={handleSubmit} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-2">Email Address *</label>
+                                            <input
+                                                type="email"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                placeholder="your@email.com"
+                                                required
+                                                className="input-field w-full"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-2">Inquiry Type *</label>
+                                            <select
+                                                value={inquiryType}
+                                                onChange={(e) => setInquiryType(e.target.value)}
+                                                required
+                                                className="input-field w-full"
+                                            >
+                                                <option value="">Select an option...</option>
+                                                <option value="bug">Bug Report</option>
+                                                <option value="feature">Feature Request</option>
+                                                <option value="partnership">Partnership Inquiry</option>
+                                                <option value="support">General Support</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-2">Message *</label>
+                                            <textarea
+                                                value={message}
+                                                onChange={(e) => setMessage(e.target.value)}
+                                                placeholder="Tell us more about your inquiry..."
+                                                required
+                                                rows={4}
+                                                className="input-field w-full resize-none"
+                                            />
+                                        </div>
+                                        <button type="submit" className="btn-primary w-full">
+                                            Send Message
+                                            <ArrowRight className="w-4 h-4 ml-2" />
+                                        </button>
+                                    </form>
+                                </>
+                            )}
+                        </div>
+                    </motion.div>
+                </>
+            )}
+        </AnimatePresence>
+    );
+}
+
 export default function LandingPage() {
     const [waitlistOpen, setWaitlistOpen] = useState(false);
+    const [contactOpen, setContactOpen] = useState(false);
 
     return (
         <div className="relative min-h-screen overflow-hidden">
@@ -256,6 +375,9 @@ export default function LandingPage() {
 
             {/* Waitlist Modal */}
             <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} />
+
+            {/* Contact Modal */}
+            <ContactModal isOpen={contactOpen} onClose={() => setContactOpen(false)} />
 
             {/* Navigation */}
             <nav className="relative z-50 border-b border-border/50 backdrop-blur-xl">
@@ -682,7 +804,7 @@ export default function LandingPage() {
                             <h4 className="font-semibold mb-4">Support</h4>
                             <ul className="space-y-2 text-sm text-muted-foreground">
                                 <li><a href="https://github.com/aody34/DegenBot" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a></li>
-                                <li><button onClick={() => setWaitlistOpen(true)} className="hover:text-foreground transition-colors">Contact Us</button></li>
+                                <li><button onClick={() => setContactOpen(true)} className="hover:text-foreground transition-colors text-left">Contact Us</button></li>
                             </ul>
                         </div>
                     </div>
