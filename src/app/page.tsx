@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -159,19 +159,38 @@ const pricingPlans = [
 // Waitlist Modal Component
 function WaitlistModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const [email, setEmail] = useState('');
+    const [alreadySignedUp, setAlreadySignedUp] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+
+    // Check if user already signed up on mount
+    useEffect(() => {
+        if (isOpen) {
+            const hasSignedUp = localStorage.getItem('degenbot_waitlist_signed_up');
+            if (hasSignedUp) {
+                setAlreadySignedUp(true);
+            }
+        }
+    }, [isOpen]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         // In production, send to your backend/Supabase
         console.log('Waitlist signup:', email);
+
+        // Save to localStorage to remember signup
+        localStorage.setItem('degenbot_waitlist_signed_up', 'true');
+        localStorage.setItem('degenbot_waitlist_email', email);
+
         setSubmitted(true);
         setTimeout(() => {
             onClose();
             setSubmitted(false);
+            setAlreadySignedUp(true);
             setEmail('');
         }, 2000);
     };
+
+    const showSuccessMessage = submitted || alreadySignedUp;
 
     return (
         <AnimatePresence>
@@ -203,7 +222,7 @@ function WaitlistModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                 </button>
                             </div>
 
-                            {submitted ? (
+                            {showSuccessMessage ? (
                                 <div className="text-center py-8">
                                     <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                                         <Check className="w-8 h-8 text-primary" />
