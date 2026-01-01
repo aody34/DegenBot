@@ -675,9 +675,7 @@ export default function LandingPage() {
                         <div>
                             <h4 className="font-semibold mb-4">Community</h4>
                             <ul className="space-y-2 text-sm text-muted-foreground">
-                                <li><a href="#" className="hover:text-foreground transition-colors">Twitter</a></li>
-                                <li><a href="#" className="hover:text-foreground transition-colors">Discord</a></li>
-                                <li><a href="#" className="hover:text-foreground transition-colors">Telegram</a></li>
+                                <li><a href="https://x.com/BotDegen62550" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Follow us on X</a></li>
                             </ul>
                         </div>
                         <div>
@@ -721,7 +719,7 @@ export default function LandingPage() {
                         </div>
 
                         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-                            <div>© 2024 DegenBot. All rights reserved.</div>
+                            <div>© 2026 DegenBot. All rights reserved.</div>
                             <div className="flex items-center gap-2">
                                 <ShieldCheck className="w-4 h-4 text-primary" />
                                 <span>Non-custodial • Your keys, your crypto</span>
