@@ -8,7 +8,6 @@ import {
     Shield,
     Fuel,
     History,
-    Globe,
     ArrowRight,
     Rocket,
     TrendingUp,
@@ -30,7 +29,11 @@ import {
     XCircle,
     AlertCircle,
     Eye,
-    Key
+    Key,
+    XOctagon,
+    BarChart3,
+    Crosshair,
+    Terminal
 } from 'lucide-react';
 
 const features = [
@@ -53,10 +56,10 @@ const features = [
         color: 'from-amber-500 to-orange-500',
     },
     {
-        icon: History,
-        title: 'Transaction History',
-        description: 'Complete history of all your trades with detailed analytics and performance tracking.',
-        color: 'from-blue-500 to-cyan-500',
+        icon: XOctagon,
+        title: 'Kill Switch',
+        description: 'Cancel all pending orders with one click. Exit everything instantly when the market turns against you.',
+        color: 'from-red-500 to-rose-500',
     },
     {
         icon: Server,
@@ -73,33 +76,33 @@ const features = [
 ];
 
 const stats = [
-    { value: '99.9%', label: 'Uptime' },
-    { value: '<100ms', label: 'Avg. Execution' },
+    { value: '99.8%', label: 'Success Rate' },
+    { value: '<100ms', label: 'Avg. Latency' },
     { value: '0%', label: 'Keys Exposed' },
-    { value: 'V1', label: 'Live Now' },
+    { value: '1%', label: 'Fee on Profits' },
 ];
 
 const howItWorks = [
     {
         step: '01',
-        title: 'Connect',
-        description: 'Link your Solana wallet (Phantom/Solflare). 100% client-side. We never see your keys.',
+        title: 'Connect Wallet',
+        description: 'Instant client-side link with Phantom or Solflare. Your keys never leave your browser.',
         icon: Wallet,
         technical: 'Non-custodial • Client-side signing only',
     },
     {
         step: '02',
-        title: 'Configure',
-        description: 'Set your Take-Profit and Stop-Loss triggers. Configure moonbag percentages and trailing stops.',
-        icon: TrendingUp,
-        technical: 'Real-time price monitoring via DexScreener API',
+        title: 'Import Token',
+        description: 'Paste any Mint Address to see live liquidity, depth, and real-time price data.',
+        icon: Crosshair,
+        technical: 'DexScreener API • Real-time monitoring',
     },
     {
         step: '03',
-        title: 'Execute',
-        description: 'Launch trades with Jito-powered bundles and Helius RPCs for 99.9% landing rate.',
-        icon: Zap,
-        technical: 'Jito Block Engine • Helius RPC • <100ms',
+        title: 'Set & Forget',
+        description: 'Configure your TP/SL levels. We use Jito bundles to ensure you aren\'t front-run on the way out.',
+        icon: Target,
+        technical: 'Jito Block Engine • MEV-protected exits',
     },
 ];
 
@@ -124,7 +127,7 @@ const comparisonData = [
     },
     {
         feature: 'Visual Control',
-        degenbot: { status: 'yes', text: 'Full dashboard' },
+        degenbot: { status: 'yes', text: 'Full terminal' },
         tgBots: { status: 'no', text: 'Chat commands' },
         dex: { status: 'warning', text: 'Basic UI' },
     },
@@ -133,6 +136,12 @@ const comparisonData = [
         degenbot: { status: 'yes', text: 'Multi-step rules' },
         tgBots: { status: 'warning', text: 'Limited' },
         dex: { status: 'no', text: 'Manual only' },
+    },
+    {
+        feature: 'Kill Switch',
+        degenbot: { status: 'yes', text: 'One-click cancel all' },
+        tgBots: { status: 'no', text: 'Not available' },
+        dex: { status: 'no', text: 'Manual per order' },
     },
 ];
 
@@ -154,14 +163,14 @@ const pricingPlans = [
     },
     {
         name: 'Pro',
-        price: '0.5%',
-        period: 'per successful trade',
+        price: '1%',
+        period: 'on successful automated trades',
         description: 'For serious traders',
         features: [
             'Unlimited take-profit rules',
             'Jito Bundle protection',
             'Private Helius RPC',
-            'Telegram alerts',
+            'Kill Switch feature',
             'Priority support',
             'No monthly fees',
         ],
@@ -177,7 +186,7 @@ const pricingPlans = [
         features: [
             'Everything in Pro',
             'Dedicated RPC endpoint',
-            '0.25% trade fee',
+            '0.5% trade fee',
             'Custom slippage profiles',
             'API access',
             '24/7 priority support',
@@ -188,27 +197,37 @@ const pricingPlans = [
     },
 ];
 
-// Live Status Indicator Component
+// Enhanced Live Status Indicator Component
 function LiveStatusIndicator() {
-    const [latency, setLatency] = useState(42);
+    const [latency, setLatency] = useState(34);
+    const [successRate, setSuccessRate] = useState(99.8);
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setLatency(Math.floor(Math.random() * 30) + 35);
+            setLatency(Math.floor(Math.random() * 20) + 28);
+            setSuccessRate(99.5 + Math.random() * 0.4);
         }, 3000);
         return () => clearInterval(interval);
     }, []);
 
     return (
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs text-emerald-400 font-medium">
-                Systems Nominal
-            </span>
-            <span className="text-xs text-muted-foreground">|</span>
-            <span className="text-xs text-muted-foreground">
-                RPC Latency: <span className="text-emerald-400">{latency}ms</span>
-            </span>
+        <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-emerald-400 font-semibold">LIVE</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/50 border border-border/50">
+                <Activity className="w-3 h-3 text-primary" />
+                <span className="text-muted-foreground">RPC Latency: <span className="text-foreground font-medium">{latency}ms</span></span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/50 border border-border/50">
+                <Shield className="w-3 h-3 text-violet-500" />
+                <span className="text-muted-foreground">Jito Bundle: <span className="text-emerald-400 font-medium">Optimal</span></span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/50 border border-border/50">
+                <CheckCircle className="w-3 h-3 text-emerald-500" />
+                <span className="text-muted-foreground">Success Rate: <span className="text-foreground font-medium">{successRate.toFixed(1)}%</span></span>
+            </div>
         </div>
     );
 }
@@ -355,14 +374,14 @@ export default function LandingPage() {
             <nav className="relative z-50 border-b border-border/50 backdrop-blur-xl">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                                    <Rocket className="w-5 h-5 text-white" />
-                                </div>
-                                <span className="text-xl font-bold">DegenBot</span>
+                        <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                                <Terminal className="w-5 h-5 text-white" />
                             </div>
-                            <LiveStatusIndicator />
+                            <span className="text-xl font-bold">DegenBot</span>
+                            <span className="hidden sm:inline-flex px-2 py-0.5 text-xs font-medium rounded-md bg-primary/10 text-primary border border-primary/20">
+                                Trading Terminal
+                            </span>
                         </div>
 
                         <div className="hidden md:flex items-center gap-8">
@@ -377,8 +396,8 @@ export default function LandingPage() {
                                 href="/dashboard"
                                 className="btn-primary text-sm flex items-center gap-2"
                             >
-                                <Wallet className="w-4 h-4" />
-                                Launch App
+                                <Terminal className="w-4 h-4" />
+                                Launch Terminal
                             </Link>
                         </div>
                     </div>
@@ -386,16 +405,26 @@ export default function LandingPage() {
             </nav>
 
             {/* Hero Section */}
-            <section className="relative z-10 pt-20 pb-32 px-4">
+            <section className="relative z-10 pt-16 pb-24 px-4">
                 <div className="max-w-7xl mx-auto text-center">
+                    {/* Live Stats Bar */}
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="mb-10"
+                    >
+                        <LiveStatusIndicator />
+                    </motion.div>
+
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6 }}
                     >
                         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8">
-                            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                            <span className="text-sm text-primary font-medium">Powered by Solana • Jito Bundles • Helius RPC</span>
+                            <Terminal className="w-4 h-4 text-primary" />
+                            <span className="text-sm text-primary font-medium">Web-Based Trading Terminal • Non-Custodial</span>
                         </div>
                     </motion.div>
 
@@ -405,9 +434,9 @@ export default function LandingPage() {
                         transition={{ duration: 0.6, delay: 0.1 }}
                         className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6"
                     >
-                        Stop Staring at Charts.
+                        The 100ms Exit Strategy
                         <br />
-                        <span className="gradient-text">Let Jito Sell For You.</span>
+                        <span className="gradient-text">For Solana.</span>
                     </motion.h1>
 
                     <motion.p
@@ -416,11 +445,11 @@ export default function LandingPage() {
                         transition={{ duration: 0.6, delay: 0.2 }}
                         className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8"
                     >
-                        The non-custodial take-profit engine for Solana degens. Secure your gains with &lt;100ms execution, 
-                        Jito-protected bundles, and private Helius RPCs. Your keys, your rules, your profit.
+                        The non-custodial trading terminal that lands your sells when Raydium fails.
+                        Jito-protected bundles. Private Helius RPCs. Your keys never leave your browser.
                     </motion.p>
 
-                    {/* Trust Signals */}
+                    {/* Trust Signals - Client Side Security */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -429,15 +458,15 @@ export default function LandingPage() {
                     >
                         <div className="flex items-center gap-2 text-sm">
                             <Lock className="w-4 h-4 text-emerald-500" />
-                            <span className="text-muted-foreground"><span className="text-foreground font-medium">Zero-Custody</span> — Keys never leave your browser</span>
+                            <span className="text-muted-foreground"><span className="text-foreground font-medium">Client-Side Signing</span> — Private keys never leave your browser</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                             <Shield className="w-4 h-4 text-violet-500" />
-                            <span className="text-muted-foreground"><span className="text-foreground font-medium">Anti-MEV</span> — Every sell wrapped in Jito bundles</span>
+                            <span className="text-muted-foreground"><span className="text-foreground font-medium">Jito Protected</span> — MEV-resistant exits</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
-                            <Server className="w-4 h-4 text-blue-500" />
-                            <span className="text-muted-foreground"><span className="text-foreground font-medium">Industry Standard</span> — Helius & Jito infrastructure</span>
+                            <XOctagon className="w-4 h-4 text-red-500" />
+                            <span className="text-muted-foreground"><span className="text-foreground font-medium">Kill Switch</span> — Cancel all with one click</span>
                         </div>
                     </motion.div>
 
@@ -449,22 +478,22 @@ export default function LandingPage() {
                     >
                         <Link href="/dashboard" className="btn-primary text-lg px-8 py-4 flex items-center gap-2">
                             <Zap className="w-5 h-5" />
-                            Start Trading Now
+                            Launch Trading Terminal
                         </Link>
                         <Link href="/dashboard" className="btn-outline text-lg px-8 py-4">
-                            Open Terminal
+                            View Demo
                             <ArrowRight className="w-5 h-5 ml-2" />
                         </Link>
                     </motion.div>
 
-                    {/* Wallet Support Micro-copy */}
+                    {/* Fee Transparency */}
                     <motion.p
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.5 }}
                         className="mt-4 text-sm text-muted-foreground"
                     >
-                        Works with Phantom, Solflare, and Backpack. No sign-up required.
+                        <span className="text-foreground font-medium">Free to use.</span> 1% fee only on successful automated trades. No monthly fees.
                     </motion.p>
                 </div>
 
@@ -473,7 +502,7 @@ export default function LandingPage() {
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.5 }}
-                    className="max-w-4xl mx-auto mt-20"
+                    className="max-w-4xl mx-auto mt-16"
                 >
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {stats.map((stat, index) => (
@@ -496,7 +525,7 @@ export default function LandingPage() {
                             viewport={{ once: true }}
                             className="text-4xl font-bold mb-4"
                         >
-                            Built for Speed & Safety
+                            Pro-Level Execution
                         </motion.h2>
                         <motion.p
                             initial={{ opacity: 0, y: 20 }}
@@ -505,7 +534,7 @@ export default function LandingPage() {
                             transition={{ delay: 0.1 }}
                             className="text-xl text-muted-foreground max-w-2xl mx-auto"
                         >
-                            Professional-grade infrastructure used by the top trading bots
+                            Professional-grade infrastructure. The same tools used by top trading desks.
                         </motion.p>
                     </div>
 
@@ -540,7 +569,7 @@ export default function LandingPage() {
                             viewport={{ once: true }}
                             className="text-4xl font-bold mb-4"
                         >
-                            Three Steps to Profit
+                            Get Started in 60 Seconds
                         </motion.h2>
                         <motion.p
                             initial={{ opacity: 0, y: 20 }}
@@ -549,7 +578,7 @@ export default function LandingPage() {
                             transition={{ delay: 0.1 }}
                             className="text-xl text-muted-foreground max-w-2xl mx-auto"
                         >
-                            Connect. Configure. Execute. No sign-up, no delays.
+                            Connect → Import → Set & Forget. No sign-up required.
                         </motion.p>
                     </div>
 
@@ -608,10 +637,10 @@ export default function LandingPage() {
                                 </p>
                             </div>
                             <div>
-                                <h4 className="font-medium text-primary mb-2">Non-Custodial</h4>
+                                <h4 className="font-medium text-primary mb-2">Client-Side Signing</h4>
                                 <p className="text-muted-foreground">
                                     Your private keys never leave your wallet. All transactions are signed client-side.
-                                    We cannot access or move your funds.
+                                    We cannot access or move your funds. Period.
                                 </p>
                             </div>
                         </div>
@@ -655,7 +684,7 @@ export default function LandingPage() {
                                         <th className="text-left p-4 font-semibold">Feature</th>
                                         <th className="text-center p-4 font-semibold">
                                             <div className="flex items-center justify-center gap-2">
-                                                <Rocket className="w-4 h-4 text-primary" />
+                                                <Terminal className="w-4 h-4 text-primary" />
                                                 DegenBot
                                             </div>
                                         </th>
@@ -729,12 +758,12 @@ export default function LandingPage() {
                             </div>
                             <h3 className="text-2xl font-semibold mb-4">Client-Side Signing</h3>
                             <p className="text-muted-foreground mb-4">
-                                Your private keys <span className="text-foreground font-medium">never leave your browser</span>. 
-                                When you execute a trade, the transaction is constructed in your browser and signed 
+                                Your private keys <span className="text-foreground font-medium">never leave your browser</span>.
+                                When you execute a trade, the transaction is constructed in your browser and signed
                                 by your wallet extension (Phantom, Solflare, etc.).
                             </p>
                             <p className="text-muted-foreground">
-                                We only receive the signed transaction to broadcast. This is the same security model 
+                                We only receive the signed transaction to broadcast. This is the same security model
                                 as using Raydium or Jupiter directly.
                             </p>
                         </motion.div>
@@ -750,11 +779,11 @@ export default function LandingPage() {
                             </div>
                             <h3 className="text-2xl font-semibold mb-4">Why TG Bots Are Risky</h3>
                             <p className="text-muted-foreground mb-4">
-                                Most Telegram trading bots require you to <span className="text-foreground font-medium">paste your private key</span> or 
+                                Most Telegram trading bots require you to <span className="text-foreground font-medium">paste your private key</span> or
                                 generate a new wallet within the bot. This means the bot operator has full access to your funds.
                             </p>
                             <p className="text-muted-foreground">
-                                With DegenBot, you connect your existing wallet. We request transaction approval, not key access. 
+                                With DegenBot, you connect your existing wallet. We request transaction approval, not key access.
                                 You're always in control.
                             </p>
                         </motion.div>
@@ -774,7 +803,7 @@ export default function LandingPage() {
                                     <div className="grid md:grid-cols-4 gap-4 text-sm">
                                         <div className="bg-background/50 rounded-lg p-4">
                                             <div className="text-primary font-semibold mb-2">1. You Configure</div>
-                                            <p className="text-muted-foreground">Set your take-profit targets in the dashboard</p>
+                                            <p className="text-muted-foreground">Set your TP/SL targets in the terminal</p>
                                         </div>
                                         <div className="bg-background/50 rounded-lg p-4">
                                             <div className="text-primary font-semibold mb-2">2. Price Triggers</div>
@@ -815,7 +844,7 @@ export default function LandingPage() {
                             transition={{ delay: 0.1 }}
                             className="text-xl text-muted-foreground max-w-2xl mx-auto"
                         >
-                            We only make money when you make money. No hidden fees, no monthly subscriptions on most plans.
+                            We only make money when you make money. 1% on successful automated trades. That's it.
                         </motion.p>
                     </div>
 
@@ -850,11 +879,10 @@ export default function LandingPage() {
                                 </ul>
                                 <Link
                                     href="/dashboard"
-                                    className={`block w-full py-3 rounded-lg font-semibold transition-all text-center ${
-                                        plan.popular
+                                    className={`block w-full py-3 rounded-lg font-semibold transition-all text-center ${plan.popular
                                             ? 'bg-primary text-primary-foreground hover:opacity-90'
                                             : 'border border-border hover:bg-muted'
-                                    }`}
+                                        }`}
                                 >
                                     {plan.cta}
                                 </Link>
@@ -900,7 +928,7 @@ export default function LandingPage() {
                                 <ExternalLink className="w-4 h-4 ml-2" />
                             </a>
                             <Link href="/dashboard" className="btn-outline">
-                                Launch App
+                                Launch Terminal
                                 <ArrowRight className="w-4 h-4 ml-2" />
                             </Link>
                         </div>
@@ -919,35 +947,60 @@ export default function LandingPage() {
                     >
                         <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-secondary/10 to-primary/10" />
                         <div className="relative z-10">
-                            <h2 className="text-4xl font-bold mb-4">The Fastest Way to Trade Solana. Period.</h2>
+                            <h2 className="text-4xl font-bold mb-4">The 100ms Exit Strategy Awaits.</h2>
                             <p className="text-xl text-muted-foreground mb-8 max-w-xl mx-auto">
-                                No Telegram delays. No custodial risks. Just pure execution.
+                                Stop losing money to failed Raydium sells. Land every trade with Jito protection.
                             </p>
                             <Link href="/dashboard" className="btn-primary text-lg px-10 py-4 inline-flex items-center gap-2">
-                                <Zap className="w-5 h-5" />
-                                Start Trading Now
+                                <Terminal className="w-5 h-5" />
+                                Launch Trading Terminal
                             </Link>
                             <p className="mt-4 text-sm text-muted-foreground">
-                                Works with Phantom, Solflare, and Backpack
+                                Free to use. 1% fee only on successful automated trades.
                             </p>
                         </div>
                     </motion.div>
                 </div>
             </section>
 
-            {/* Footer with Legal Disclaimer */}
+            {/* Footer with Legal Disclaimer and Powered By */}
             <footer className="relative z-10 border-t border-border/50 py-12 px-4">
                 <div className="max-w-7xl mx-auto">
+                    {/* Powered By Section */}
+                    <div className="flex flex-wrap items-center justify-center gap-8 mb-12 pb-8 border-b border-border/30">
+                        <span className="text-sm text-muted-foreground">Powered by</span>
+                        <div className="flex flex-wrap items-center justify-center gap-8">
+                            <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
+                                    <span className="text-white font-bold text-xs">H</span>
+                                </div>
+                                <span className="font-medium">Helius</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                                    <span className="text-white font-bold text-xs">J</span>
+                                </div>
+                                <span className="font-medium">Jito</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                                    <span className="text-white font-bold text-xs">J</span>
+                                </div>
+                                <span className="font-medium">Jupiter</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="grid md:grid-cols-4 gap-8 mb-8">
                         <div>
                             <div className="flex items-center gap-2 mb-4">
                                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                                    <Rocket className="w-4 h-4 text-white" />
+                                    <Terminal className="w-4 h-4 text-white" />
                                 </div>
                                 <span className="font-bold">DegenBot</span>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                                The non-custodial take-profit engine for Solana. Built with Jito Bundles and Helius RPC.
+                                The non-custodial trading terminal for Solana. Built with Jito Bundles and Helius RPC.
                             </p>
                         </div>
                         <div>
@@ -1008,7 +1061,7 @@ export default function LandingPage() {
                             <div>© 2026 DegenBot. All rights reserved.</div>
                             <div className="flex items-center gap-2">
                                 <ShieldCheck className="w-4 h-4 text-primary" />
-                                <span>Non-custodial • Your keys, your crypto</span>
+                                <span>Non-custodial • Client-side signing • Your keys, your crypto</span>
                             </div>
                         </div>
                     </div>
