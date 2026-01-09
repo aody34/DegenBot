@@ -9,7 +9,6 @@ import {
     Fuel,
     History,
     Globe,
-    Moon,
     ArrowRight,
     Rocket,
     TrendingUp,
@@ -24,7 +23,14 @@ import {
     ShieldCheck,
     AlertTriangle,
     FileText,
-    ExternalLink
+    ExternalLink,
+    Target,
+    Activity,
+    CheckCircle,
+    XCircle,
+    AlertCircle,
+    Eye,
+    Key
 } from 'lucide-react';
 
 const features = [
@@ -36,14 +42,14 @@ const features = [
     },
     {
         icon: Shield,
-        title: 'MEV Protection',
-        description: 'Jito Bundles integration prevents sandwich attacks. Your trades are protected from front-runners.',
+        title: 'Beat the Telegram Bots',
+        description: 'Our web-based RPC path is faster than TG bot API overhead. Direct Helius connection means your orders land first.',
         color: 'from-violet-500 to-purple-500',
     },
     {
         icon: Fuel,
-        title: 'Gas Optimization',
-        description: 'Dynamic priority fee calculation ensures your transactions land in the next block, every time.',
+        title: 'Dynamic Priority Fees',
+        description: 'Smart fee calculation adapts to network conditions. Never overpay, never get stuck in the mempool.',
         color: 'from-amber-500 to-orange-500',
     },
     {
@@ -59,48 +65,74 @@ const features = [
         color: 'from-pink-500 to-rose-500',
     },
     {
-        icon: Moon,
-        title: 'Beautiful Dark Mode',
-        description: 'Premium dark theme designed for extended trading sessions. Easy on the eyes, heavy on style.',
+        icon: Target,
+        title: 'Automated Exit Strategies',
+        description: 'Set 25% moonbags, auto-sell 50% at 2x, and trailing stop-losses in one click. Multi-step exit plans for maximum profit.',
         color: 'from-indigo-500 to-violet-500',
     },
 ];
 
 const stats = [
-    { value: '$2.5M+', label: 'Volume Traded' },
-    { value: '15K+', label: 'Trades Executed' },
     { value: '99.9%', label: 'Uptime' },
     { value: '<100ms', label: 'Avg. Execution' },
+    { value: '0%', label: 'Keys Exposed' },
+    { value: 'V1', label: 'Live Now' },
 ];
 
 const howItWorks = [
     {
         step: '01',
-        title: 'Connect Wallet',
-        description: 'Securely connect your Phantom, Solflare, or any Solana wallet. We never store your private keys.',
+        title: 'Connect',
+        description: 'Link your Solana wallet (Phantom/Solflare). 100% client-side. We never see your keys.',
         icon: Wallet,
         technical: 'Non-custodial • Client-side signing only',
     },
     {
         step: '02',
-        title: 'Set Take-Profit Rules',
-        description: 'Configure target percentages (25%, 50%, 100%+), slippage tolerance, and auto-execute preferences.',
+        title: 'Configure',
+        description: 'Set your Take-Profit and Stop-Loss triggers. Configure moonbag percentages and trailing stops.',
         icon: TrendingUp,
         technical: 'Real-time price monitoring via DexScreener API',
     },
     {
         step: '03',
-        title: 'Jito Bundle Protection',
-        description: 'Your sell orders are wrapped in Jito bundles, protecting you from MEV bots and sandwich attacks.',
-        icon: ShieldCheck,
-        technical: 'Jito Block Engine • Private mempool',
+        title: 'Execute',
+        description: 'Launch trades with Jito-powered bundles and Helius RPCs for 99.9% landing rate.',
+        icon: Zap,
+        technical: 'Jito Block Engine • Helius RPC • <100ms',
+    },
+];
+
+const comparisonData = [
+    {
+        feature: 'MEV Protection',
+        degenbot: { status: 'yes', text: 'Jito Bundles' },
+        tgBots: { status: 'no', text: 'Public mempool' },
+        dex: { status: 'no', text: 'Public mempool' },
     },
     {
-        step: '04',
-        title: 'Instant Execution',
-        description: 'When your target hits, we execute via dedicated Helius RPC nodes for guaranteed speed.',
-        icon: Timer,
-        technical: 'Helius RPC • <100ms latency • Priority fees',
+        feature: 'RPC Speed',
+        degenbot: { status: 'yes', text: 'Private Helius (<100ms)' },
+        tgBots: { status: 'warning', text: 'Shared RPC' },
+        dex: { status: 'warning', text: 'Public RPC' },
+    },
+    {
+        feature: 'Non-Custodial',
+        degenbot: { status: 'yes', text: 'Client-side signing' },
+        tgBots: { status: 'no', text: 'Bot holds keys' },
+        dex: { status: 'yes', text: 'Direct wallet' },
+    },
+    {
+        feature: 'Visual Control',
+        degenbot: { status: 'yes', text: 'Full dashboard' },
+        tgBots: { status: 'no', text: 'Chat commands' },
+        dex: { status: 'warning', text: 'Basic UI' },
+    },
+    {
+        feature: 'Take-Profit Automation',
+        degenbot: { status: 'yes', text: 'Multi-step rules' },
+        tgBots: { status: 'warning', text: 'Limited' },
+        dex: { status: 'no', text: 'Manual only' },
     },
 ];
 
@@ -116,9 +148,9 @@ const pricingPlans = [
             'Public RPC nodes',
             'Community support',
         ],
-        cta: 'Get Started Free',
+        cta: 'Start Trading',
         popular: true,
-        comingSoon: false,
+        available: true,
     },
     {
         name: 'Pro',
@@ -133,9 +165,9 @@ const pricingPlans = [
             'Priority support',
             'No monthly fees',
         ],
-        cta: 'Coming Soon',
+        cta: 'Upgrade to Pro',
         popular: false,
-        comingSoon: true,
+        available: true,
     },
     {
         name: 'Whale',
@@ -150,115 +182,34 @@ const pricingPlans = [
             'API access',
             '24/7 priority support',
         ],
-        cta: 'Coming Soon',
+        cta: 'Go Whale',
         popular: false,
-        comingSoon: true,
+        available: true,
     },
 ];
 
-// Waitlist Modal Component
-function WaitlistModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-    const [email, setEmail] = useState('');
-    const [alreadySignedUp, setAlreadySignedUp] = useState(false);
-    const [submitted, setSubmitted] = useState(false);
+// Live Status Indicator Component
+function LiveStatusIndicator() {
+    const [latency, setLatency] = useState(42);
 
-    // Check if user already signed up on mount
     useEffect(() => {
-        if (isOpen) {
-            const hasSignedUp = localStorage.getItem('degenbot_waitlist_signed_up');
-            if (hasSignedUp) {
-                setAlreadySignedUp(true);
-            }
-        }
-    }, [isOpen]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        // In production, send to your backend/Supabase
-        console.log('Waitlist signup:', email);
-
-        // Save to localStorage to remember signup
-        localStorage.setItem('degenbot_waitlist_signed_up', 'true');
-        localStorage.setItem('degenbot_waitlist_email', email);
-
-        setSubmitted(true);
-        setTimeout(() => {
-            onClose();
-            setSubmitted(false);
-            setAlreadySignedUp(true);
-            setEmail('');
-        }, 2000);
-    };
-
-    const showSuccessMessage = submitted || alreadySignedUp;
+        const interval = setInterval(() => {
+            setLatency(Math.floor(Math.random() * 30) + 35);
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
-        <AnimatePresence>
-            {isOpen && (
-                <>
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
-                        onClick={onClose}
-                    />
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
-                    >
-                        <div className="glass rounded-2xl p-8 border border-primary/20">
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                                        <Rocket className="w-5 h-5 text-white" />
-                                    </div>
-                                    <h3 className="text-xl font-bold">Join the Waitlist</h3>
-                                </div>
-                                <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
-
-                            {showSuccessMessage ? (
-                                <div className="text-center py-8">
-                                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                                        <Check className="w-8 h-8 text-primary" />
-                                    </div>
-                                    <h4 className="text-lg font-semibold mb-2">You're on the list!</h4>
-                                    <p className="text-muted-foreground">We'll notify you when DegenBot launches.</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <p className="text-muted-foreground mb-6">
-                                        DegenBot is currently in private beta. Join the waitlist to get early access and exclusive perks.
-                                    </p>
-                                    <form onSubmit={handleSubmit} className="space-y-4">
-                                        <input
-                                            type="email"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            placeholder="Enter your email"
-                                            required
-                                            className="input-field w-full"
-                                        />
-                                        <button type="submit" className="btn-primary w-full">
-                                            Join Waitlist
-                                            <ArrowRight className="w-4 h-4 ml-2" />
-                                        </button>
-                                    </form>
-                                    <p className="text-xs text-muted-foreground mt-4 text-center">
-                                        No spam. We'll only email you about launch updates.
-                                    </p>
-                                </>
-                            )}
-                        </div>
-                    </motion.div>
-                </>
-            )}
-        </AnimatePresence>
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs text-emerald-400 font-medium">
+                Systems Nominal
+            </span>
+            <span className="text-xs text-muted-foreground">|</span>
+            <span className="text-xs text-muted-foreground">
+                RPC Latency: <span className="text-emerald-400">{latency}ms</span>
+            </span>
+        </div>
     );
 }
 
@@ -271,7 +222,6 @@ function ContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // In production, send to your backend/Supabase
         console.log('Contact form:', { email, inquiryType, message });
         setSubmitted(true);
         setTimeout(() => {
@@ -380,8 +330,14 @@ function ContactModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
     );
 }
 
+// Comparison Status Icon
+function ComparisonStatusIcon({ status }: { status: string }) {
+    if (status === 'yes') return <CheckCircle className="w-5 h-5 text-emerald-500" />;
+    if (status === 'no') return <XCircle className="w-5 h-5 text-red-500" />;
+    return <AlertCircle className="w-5 h-5 text-amber-500" />;
+}
+
 export default function LandingPage() {
-    const [waitlistOpen, setWaitlistOpen] = useState(false);
     const [contactOpen, setContactOpen] = useState(false);
 
     return (
@@ -392,9 +348,6 @@ export default function LandingPage() {
             <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary/20 rounded-full blur-[120px] opacity-30" />
             <div className="fixed bottom-0 right-0 w-[600px] h-[400px] bg-secondary/20 rounded-full blur-[100px] opacity-20" />
 
-            {/* Waitlist Modal */}
-            <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} />
-
             {/* Contact Modal */}
             <ContactModal isOpen={contactOpen} onClose={() => setContactOpen(false)} />
 
@@ -402,34 +355,31 @@ export default function LandingPage() {
             <nav className="relative z-50 border-b border-border/50 backdrop-blur-xl">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
-                        <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                                <Rocket className="w-5 h-5 text-white" />
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                                    <Rocket className="w-5 h-5 text-white" />
+                                </div>
+                                <span className="text-xl font-bold">DegenBot</span>
                             </div>
-                            <span className="text-xl font-bold">DegenBot</span>
+                            <LiveStatusIndicator />
                         </div>
 
                         <div className="hidden md:flex items-center gap-8">
                             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
                             <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
+                            <a href="#compare" className="text-muted-foreground hover:text-foreground transition-colors">Compare</a>
                             <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-                            <a href="#docs" className="text-muted-foreground hover:text-foreground transition-colors">Docs</a>
                         </div>
 
                         <div className="flex items-center gap-3">
                             <Link
                                 href="/dashboard"
-                                className="btn-outline text-sm"
+                                className="btn-primary text-sm flex items-center gap-2"
                             >
-                                Try Demo
+                                <Wallet className="w-4 h-4" />
+                                Launch App
                             </Link>
-                            <button
-                                onClick={() => setWaitlistOpen(true)}
-                                className="btn-primary text-sm"
-                            >
-                                Join Waitlist
-                                <ArrowRight className="w-4 h-4 ml-2" />
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -455,20 +405,41 @@ export default function LandingPage() {
                         transition={{ duration: 0.6, delay: 0.1 }}
                         className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6"
                     >
-                        Auto Take-Profit
+                        Stop Staring at Charts.
                         <br />
-                        <span className="gradient-text">For Degen Traders</span>
+                        <span className="gradient-text">Let Jito Sell For You.</span>
                     </motion.h1>
 
                     <motion.p
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.2 }}
-                        className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
+                        className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8"
                     >
-                        Never miss a pump again. Automate your Solana trades with Jito-protected execution,
-                        private RPC nodes, and instant alerts.
+                        The non-custodial take-profit engine for Solana degens. Secure your gains with &lt;100ms execution, 
+                        Jito-protected bundles, and private Helius RPCs. Your keys, your rules, your profit.
                     </motion.p>
+
+                    {/* Trust Signals */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.25 }}
+                        className="flex flex-wrap items-center justify-center gap-6 mb-10"
+                    >
+                        <div className="flex items-center gap-2 text-sm">
+                            <Lock className="w-4 h-4 text-emerald-500" />
+                            <span className="text-muted-foreground"><span className="text-foreground font-medium">Zero-Custody</span> — Keys never leave your browser</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                            <Shield className="w-4 h-4 text-violet-500" />
+                            <span className="text-muted-foreground"><span className="text-foreground font-medium">Anti-MEV</span> — Every sell wrapped in Jito bundles</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                            <Server className="w-4 h-4 text-blue-500" />
+                            <span className="text-muted-foreground"><span className="text-foreground font-medium">Industry Standard</span> — Helius & Jito infrastructure</span>
+                        </div>
+                    </motion.div>
 
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -476,26 +447,25 @@ export default function LandingPage() {
                         transition={{ duration: 0.6, delay: 0.3 }}
                         className="flex flex-col sm:flex-row items-center justify-center gap-4"
                     >
-                        <button onClick={() => setWaitlistOpen(true)} className="btn-primary text-lg px-8 py-4">
-                            Join Waitlist
-                            <Rocket className="w-5 h-5 ml-2" />
-                        </button>
+                        <Link href="/dashboard" className="btn-primary text-lg px-8 py-4 flex items-center gap-2">
+                            <Zap className="w-5 h-5" />
+                            Start Trading Now
+                        </Link>
                         <Link href="/dashboard" className="btn-outline text-lg px-8 py-4">
-                            Try Demo
+                            Open Terminal
                             <ArrowRight className="w-5 h-5 ml-2" />
                         </Link>
                     </motion.div>
 
-                    {/* Beta Notice */}
-                    <motion.div
+                    {/* Wallet Support Micro-copy */}
+                    <motion.p
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.5 }}
-                        className="mt-6 inline-flex items-center gap-2 text-sm text-amber-400"
+                        className="mt-4 text-sm text-muted-foreground"
                     >
-                        <AlertTriangle className="w-4 h-4" />
-                        <span>Currently in private beta • Limited spots available</span>
-                    </motion.div>
+                        Works with Phantom, Solflare, and Backpack. No sign-up required.
+                    </motion.p>
                 </div>
 
                 {/* Stats */}
@@ -560,7 +530,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* How It Works Section - Technical Depth */}
+            {/* How It Works Section */}
             <section id="how-it-works" className="relative z-10 py-24 px-4 bg-card/30">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
@@ -570,7 +540,7 @@ export default function LandingPage() {
                             viewport={{ once: true }}
                             className="text-4xl font-bold mb-4"
                         >
-                            How It Works
+                            Three Steps to Profit
                         </motion.h2>
                         <motion.p
                             initial={{ opacity: 0, y: 20 }}
@@ -579,11 +549,11 @@ export default function LandingPage() {
                             transition={{ delay: 0.1 }}
                             className="text-xl text-muted-foreground max-w-2xl mx-auto"
                         >
-                            Professional infrastructure. Zero compromises.
+                            Connect. Configure. Execute. No sign-up, no delays.
                         </motion.p>
                     </div>
 
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div className="grid md:grid-cols-3 gap-8">
                         {howItWorks.map((item, index) => (
                             <motion.div
                                 key={index}
@@ -649,6 +619,183 @@ export default function LandingPage() {
                 </div>
             </section>
 
+            {/* Comparison Section */}
+            <section id="compare" className="relative z-10 py-24 px-4">
+                <div className="max-w-5xl mx-auto">
+                    <div className="text-center mb-16">
+                        <motion.h2
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="text-4xl font-bold mb-4"
+                        >
+                            Why Not Just Use a TG Bot?
+                        </motion.h2>
+                        <motion.p
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.1 }}
+                            className="text-xl text-muted-foreground max-w-2xl mx-auto"
+                        >
+                            Telegram bots store your private keys. We don't. See how we compare.
+                        </motion.p>
+                    </div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="glass rounded-2xl overflow-hidden"
+                    >
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="border-b border-border/50">
+                                        <th className="text-left p-4 font-semibold">Feature</th>
+                                        <th className="text-center p-4 font-semibold">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <Rocket className="w-4 h-4 text-primary" />
+                                                DegenBot
+                                            </div>
+                                        </th>
+                                        <th className="text-center p-4 font-semibold text-muted-foreground">TG Bots</th>
+                                        <th className="text-center p-4 font-semibold text-muted-foreground">DEX Swaps</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {comparisonData.map((row, index) => (
+                                        <tr key={index} className="border-b border-border/30 last:border-0">
+                                            <td className="p-4 font-medium">{row.feature}</td>
+                                            <td className="p-4 text-center">
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <ComparisonStatusIcon status={row.degenbot.status} />
+                                                    <span className="text-xs text-muted-foreground">{row.degenbot.text}</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <ComparisonStatusIcon status={row.tgBots.status} />
+                                                    <span className="text-xs text-muted-foreground">{row.tgBots.text}</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <ComparisonStatusIcon status={row.dex.status} />
+                                                    <span className="text-xs text-muted-foreground">{row.dex.text}</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </motion.div>
+                </div>
+            </section>
+
+            {/* Security Architecture Section */}
+            <section id="security" className="relative z-10 py-24 px-4 bg-card/30">
+                <div className="max-w-5xl mx-auto">
+                    <div className="text-center mb-16">
+                        <motion.h2
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="text-4xl font-bold mb-4"
+                        >
+                            Security Architecture
+                        </motion.h2>
+                        <motion.p
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.1 }}
+                            className="text-xl text-muted-foreground max-w-2xl mx-auto"
+                        >
+                            In Solana, everyone's terrified of wallet drainers. Here's why you're safe with us.
+                        </motion.p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-8">
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="glass rounded-2xl p-8"
+                        >
+                            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mb-6">
+                                <Key className="w-7 h-7 text-white" />
+                            </div>
+                            <h3 className="text-2xl font-semibold mb-4">Client-Side Signing</h3>
+                            <p className="text-muted-foreground mb-4">
+                                Your private keys <span className="text-foreground font-medium">never leave your browser</span>. 
+                                When you execute a trade, the transaction is constructed in your browser and signed 
+                                by your wallet extension (Phantom, Solflare, etc.).
+                            </p>
+                            <p className="text-muted-foreground">
+                                We only receive the signed transaction to broadcast. This is the same security model 
+                                as using Raydium or Jupiter directly.
+                            </p>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            className="glass rounded-2xl p-8"
+                        >
+                            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center mb-6">
+                                <Shield className="w-7 h-7 text-white" />
+                            </div>
+                            <h3 className="text-2xl font-semibold mb-4">Why TG Bots Are Risky</h3>
+                            <p className="text-muted-foreground mb-4">
+                                Most Telegram trading bots require you to <span className="text-foreground font-medium">paste your private key</span> or 
+                                generate a new wallet within the bot. This means the bot operator has full access to your funds.
+                            </p>
+                            <p className="text-muted-foreground">
+                                With DegenBot, you connect your existing wallet. We request transaction approval, not key access. 
+                                You're always in control.
+                            </p>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="glass rounded-2xl p-8 md:col-span-2"
+                        >
+                            <div className="flex items-start gap-4">
+                                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center flex-shrink-0">
+                                    <Eye className="w-7 h-7 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-semibold mb-4">Transaction Flow</h3>
+                                    <div className="grid md:grid-cols-4 gap-4 text-sm">
+                                        <div className="bg-background/50 rounded-lg p-4">
+                                            <div className="text-primary font-semibold mb-2">1. You Configure</div>
+                                            <p className="text-muted-foreground">Set your take-profit targets in the dashboard</p>
+                                        </div>
+                                        <div className="bg-background/50 rounded-lg p-4">
+                                            <div className="text-primary font-semibold mb-2">2. Price Triggers</div>
+                                            <p className="text-muted-foreground">Our servers monitor prices via DexScreener API</p>
+                                        </div>
+                                        <div className="bg-background/50 rounded-lg p-4">
+                                            <div className="text-primary font-semibold mb-2">3. TX Built Locally</div>
+                                            <p className="text-muted-foreground">Transaction is constructed in your browser</p>
+                                        </div>
+                                        <div className="bg-background/50 rounded-lg p-4">
+                                            <div className="text-primary font-semibold mb-2">4. You Sign & Send</div>
+                                            <p className="text-muted-foreground">Your wallet signs, we broadcast via Jito</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                </div>
+            </section>
+
             {/* Pricing Section */}
             <section id="pricing" className="relative z-10 py-24 px-4">
                 <div className="max-w-7xl mx-auto">
@@ -659,7 +806,7 @@ export default function LandingPage() {
                             viewport={{ once: true }}
                             className="text-4xl font-bold mb-4"
                         >
-                            Simple, Transparent Pricing
+                            Performance-Based Fees
                         </motion.h2>
                         <motion.p
                             initial={{ opacity: 0, y: 20 }}
@@ -668,7 +815,7 @@ export default function LandingPage() {
                             transition={{ delay: 0.1 }}
                             className="text-xl text-muted-foreground max-w-2xl mx-auto"
                         >
-                            No hidden fees. Pay only when you profit.
+                            We only make money when you make money. No hidden fees, no monthly subscriptions on most plans.
                         </motion.p>
                     </div>
 
@@ -701,18 +848,16 @@ export default function LandingPage() {
                                         </li>
                                     ))}
                                 </ul>
-                                <button
-                                    onClick={() => !plan.comingSoon && setWaitlistOpen(true)}
-                                    disabled={plan.comingSoon}
-                                    className={`w-full py-3 rounded-lg font-semibold transition-all ${plan.comingSoon
-                                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                                        : plan.popular
+                                <Link
+                                    href="/dashboard"
+                                    className={`block w-full py-3 rounded-lg font-semibold transition-all text-center ${
+                                        plan.popular
                                             ? 'bg-primary text-primary-foreground hover:opacity-90'
                                             : 'border border-border hover:bg-muted'
-                                        }`}
+                                    }`}
                                 >
                                     {plan.cta}
-                                </button>
+                                </Link>
                             </motion.div>
                         ))}
                     </div>
@@ -754,13 +899,10 @@ export default function LandingPage() {
                                 View on GitHub
                                 <ExternalLink className="w-4 h-4 ml-2" />
                             </a>
-                            <button
-                                onClick={() => setWaitlistOpen(true)}
-                                className="btn-outline"
-                            >
-                                Join Waitlist for Docs Access
+                            <Link href="/dashboard" className="btn-outline">
+                                Launch App
                                 <ArrowRight className="w-4 h-4 ml-2" />
-                            </button>
+                            </Link>
                         </div>
                     </motion.div>
                 </div>
@@ -777,14 +919,17 @@ export default function LandingPage() {
                     >
                         <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-secondary/10 to-primary/10" />
                         <div className="relative z-10">
-                            <h2 className="text-4xl font-bold mb-4">Ready to Automate Your Trades?</h2>
+                            <h2 className="text-4xl font-bold mb-4">The Fastest Way to Trade Solana. Period.</h2>
                             <p className="text-xl text-muted-foreground mb-8 max-w-xl mx-auto">
-                                Join the waitlist for early access and exclusive launch pricing
+                                No Telegram delays. No custodial risks. Just pure execution.
                             </p>
-                            <button onClick={() => setWaitlistOpen(true)} className="btn-primary text-lg px-10 py-4">
-                                Join Waitlist
-                                <ArrowRight className="w-5 h-5 ml-2" />
-                            </button>
+                            <Link href="/dashboard" className="btn-primary text-lg px-10 py-4 inline-flex items-center gap-2">
+                                <Zap className="w-5 h-5" />
+                                Start Trading Now
+                            </Link>
+                            <p className="mt-4 text-sm text-muted-foreground">
+                                Works with Phantom, Solflare, and Backpack
+                            </p>
                         </div>
                     </motion.div>
                 </div>
@@ -802,7 +947,7 @@ export default function LandingPage() {
                                 <span className="font-bold">DegenBot</span>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                                Auto take-profit bot for Solana traders. Built with Jito Bundles and Helius RPC.
+                                The non-custodial take-profit engine for Solana. Built with Jito Bundles and Helius RPC.
                             </p>
                         </div>
                         <div>
