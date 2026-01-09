@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { WalletProvider } from '@/lib/solana/WalletProvider';
 
 export const metadata: Metadata = {
     title: 'DegenBot - Auto Take-Profit Bot for Solana',
@@ -21,7 +22,9 @@ export default function RootLayout({
     return (
         <html lang="en" className="dark">
             <body className="min-h-screen bg-background antialiased">
-                {children}
+                <WalletProvider>
+                    {children}
+                </WalletProvider>
             </body>
         </html>
     );

@@ -1,6 +1,9 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import {
     Search,
     Filter,
@@ -10,11 +13,18 @@ import {
     ExternalLink,
     MoreVertical,
     Plus,
-    ChevronDown
+    ChevronDown,
+    X,
+    Wallet,
+    RefreshCw,
+    Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAppStore } from '@/lib/store';
+import { getTokenAccounts, fetchTokenPrice } from '@/lib/solana/connection';
 
-const positions = [
+// Demo positions (used when not connected)
+const demoPositions = [
     {
         token: 'BONK',
         symbol: 'BONK/SOL',
@@ -87,18 +97,231 @@ const positions = [
     },
 ];
 
+// Import Token Modal
+function ImportTokenModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+    const [tokenAddress, setTokenAddress] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleImport = async () => {
+        if (!tokenAddress) {
+            setError('Please enter a token address');
+            return;
+        }
+        setLoading(true);
+        setError('');
+
+        // Simulate import
+        setTimeout(() => {
+            setLoading(false);
+            onClose();
+            setTokenAddress('');
+        }, 1500);
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+                onClick={onClose}
+            />
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
+            >
+                <div className="glass rounded-2xl p-6 border border-primary/20">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                                <Plus className="w-5 h-5 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold">Import Token</h3>
+                        </div>
+                        <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-sm text-muted-foreground mb-2 block">Token Mint Address</label>
+                            <input
+                                type="text"
+                                value={tokenAddress}
+                                onChange={(e) => setTokenAddress(e.target.value)}
+                                placeholder="Paste token mint address..."
+                                className="input-field w-full"
+                            />
+                            {error && <p className="text-sm text-red-400 mt-1">{error}</p>}
+                        </div>
+
+                        <p className="text-sm text-muted-foreground">
+                            We'll fetch real-time price, liquidity, and market data from DexScreener.
+                        </p>
+
+                        <button
+                            onClick={handleImport}
+                            disabled={loading}
+                            className="btn-primary w-full"
+                        >
+                            {loading ? (
+                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                                <Plus className="w-4 h-4 mr-2" />
+                            )}
+                            {loading ? 'Importing...' : 'Import Token'}
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        </AnimatePresence>
+    );
+}
+
+// Set TP Modal for positions
+function SetTPModal({
+    isOpen,
+    onClose,
+    position
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    position: any;
+}) {
+    const [targetPercentage, setTargetPercentage] = useState(50);
+    const { addTakeProfitOrder } = useAppStore();
+
+    if (!isOpen || !position) return null;
+
+    const handleSave = () => {
+        addTakeProfitOrder({
+            id: Date.now().toString(),
+            positionId: position.token,
+            targetPercentage,
+            slippage: 1,
+            autoExecute: true,
+            status: 'active',
+        });
+        onClose();
+    };
+
+    return (
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+                onClick={onClose}
+            />
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm"
+            >
+                <div className="glass rounded-2xl p-6 border border-primary/20">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold">Set Take-Profit for {position.token}</h3>
+                        <button onClick={onClose} className="p-1 hover:bg-muted rounded">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-4 gap-2">
+                            {[25, 50, 100, 200].map((val) => (
+                                <button
+                                    key={val}
+                                    onClick={() => setTargetPercentage(val)}
+                                    className={cn(
+                                        'py-2 rounded-lg text-sm font-medium border',
+                                        targetPercentage === val
+                                            ? 'bg-primary text-primary-foreground border-primary'
+                                            : 'border-border hover:border-primary/50'
+                                    )}
+                                >
+                                    {val}%
+                                </button>
+                            ))}
+                        </div>
+
+                        <input
+                            type="number"
+                            value={targetPercentage}
+                            onChange={(e) => setTargetPercentage(Number(e.target.value))}
+                            className="input-field w-full"
+                            placeholder="Custom %"
+                        />
+
+                        <button onClick={handleSave} className="btn-primary w-full">
+                            <Target className="w-4 h-4 mr-2" />
+                            Save Take-Profit
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        </AnimatePresence>
+    );
+}
+
 export default function PositionsPage() {
+    const { connected, publicKey } = useWallet();
+    const { setVisible } = useWalletModal();
+    const [importModalOpen, setImportModalOpen] = useState(false);
+    const [tpModalOpen, setTPModalOpen] = useState(false);
+    const [selectedPosition, setSelectedPosition] = useState<any>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filter, setFilter] = useState('all');
+
+    const positions = demoPositions;
+
+    const filteredPositions = positions.filter(p => {
+        const matchesSearch = p.token.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesFilter = filter === 'all' ||
+            (filter === 'profitable' && p.pnl >= 0) ||
+            (filter === 'loss' && p.pnl < 0) ||
+            (filter === 'tp-set' && p.takeProfitSet);
+        return matchesSearch && matchesFilter;
+    });
+
+    const totalValue = positions.reduce((sum, p) => sum + p.value, 0);
+    const totalPnl = positions.reduce((sum, p) => sum + p.pnlValue, 0);
+    const positionsWithTP = positions.filter(p => p.takeProfitSet).length;
+
+    const handleSetTP = (position: any) => {
+        setSelectedPosition(position);
+        setTPModalOpen(true);
+    };
+
     return (
         <div className="space-y-6">
+            <ImportTokenModal isOpen={importModalOpen} onClose={() => setImportModalOpen(false)} />
+            <SetTPModal
+                isOpen={tpModalOpen}
+                onClose={() => setTPModalOpen(false)}
+                position={selectedPosition}
+            />
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold">Positions</h1>
                     <p className="text-muted-foreground">Manage all your active trading positions</p>
                 </div>
-                <button className="btn-primary">
+                <button
+                    onClick={() => connected ? setImportModalOpen(true) : setVisible(true)}
+                    className="btn-primary"
+                >
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Position
+                    {connected ? 'Add Position' : 'Connect Wallet'}
                 </button>
             </div>
 
@@ -114,20 +337,21 @@ export default function PositionsPage() {
                         <input
                             type="text"
                             placeholder="Search tokens..."
-                            className="input-field pl-10"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="input-field pl-10 w-full"
                         />
                     </div>
                     <div className="flex gap-2">
-                        <button className="btn-outline flex items-center gap-2">
-                            <Filter className="w-4 h-4" />
-                            Filter
-                            <ChevronDown className="w-4 h-4" />
-                        </button>
-                        <select className="input-field w-auto">
-                            <option>All Positions</option>
-                            <option>Profitable</option>
-                            <option>At Loss</option>
-                            <option>With TP Set</option>
+                        <select
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            className="input-field w-auto"
+                        >
+                            <option value="all">All Positions</option>
+                            <option value="profitable">Profitable</option>
+                            <option value="loss">At Loss</option>
+                            <option value="tp-set">With TP Set</option>
                         </select>
                     </div>
                 </div>
@@ -142,7 +366,7 @@ export default function PositionsPage() {
                     className="glass rounded-xl p-4"
                 >
                     <div className="text-sm text-muted-foreground mb-1">Total Value</div>
-                    <div className="text-2xl font-bold">$10,350.00</div>
+                    <div className="text-2xl font-bold">${totalValue.toLocaleString()}</div>
                 </motion.div>
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -151,7 +375,12 @@ export default function PositionsPage() {
                     className="glass rounded-xl p-4"
                 >
                     <div className="text-sm text-muted-foreground mb-1">Unrealized P&L</div>
-                    <div className="text-2xl font-bold text-emerald-400">+$1,315.00</div>
+                    <div className={cn(
+                        'text-2xl font-bold',
+                        totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'
+                    )}>
+                        {totalPnl >= 0 ? '+' : ''}${totalPnl.toLocaleString()}
+                    </div>
                 </motion.div>
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -160,13 +389,13 @@ export default function PositionsPage() {
                     className="glass rounded-xl p-4"
                 >
                     <div className="text-sm text-muted-foreground mb-1">Positions with TP</div>
-                    <div className="text-2xl font-bold">3 / 5</div>
+                    <div className="text-2xl font-bold">{positionsWithTP} / {positions.length}</div>
                 </motion.div>
             </div>
 
             {/* Positions Grid */}
             <div className="grid gap-4">
-                {positions.map((position, index) => (
+                {filteredPositions.map((position, index) => (
                     <motion.div
                         key={index}
                         initial={{ opacity: 0, y: 20 }}
@@ -246,12 +475,18 @@ export default function PositionsPage() {
                                 {/* Actions */}
                                 <div className="flex items-center gap-2">
                                     {position.takeProfitSet ? (
-                                        <button className="px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleSetTP(position)}
+                                            className="px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors flex items-center gap-2"
+                                        >
                                             <Target className="w-4 h-4" />
                                             Edit TP
                                         </button>
                                     ) : (
-                                        <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-colors flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleSetTP(position)}
+                                            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-colors flex items-center gap-2"
+                                        >
                                             <Target className="w-4 h-4" />
                                             Set TP
                                         </button>
@@ -265,6 +500,23 @@ export default function PositionsPage() {
                     </motion.div>
                 ))}
             </div>
+
+            {filteredPositions.length === 0 && (
+                <div className="glass rounded-2xl p-12 text-center">
+                    <Wallet className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-xl font-semibold mb-2">No positions found</h3>
+                    <p className="text-muted-foreground mb-6">
+                        {searchQuery ? 'Try a different search term' : 'Import a token to get started'}
+                    </p>
+                    <button
+                        onClick={() => connected ? setImportModalOpen(true) : setVisible(true)}
+                        className="btn-primary"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        {connected ? 'Import Token' : 'Connect Wallet'}
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

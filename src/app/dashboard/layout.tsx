@@ -1,23 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { cn } from '@/lib/utils';
+import { useAppStore } from '@/lib/store';
+import { getBalance } from '@/lib/solana/connection';
 import {
     LayoutDashboard,
     Briefcase,
     Target,
     History,
     Settings,
-    Rocket,
+    Terminal,
     Menu,
     X,
     ChevronLeft,
     LogOut,
     Bell,
     Wallet,
+    Copy,
+    Check,
+    ExternalLink,
 } from 'lucide-react';
 
 const navItems = [
@@ -27,6 +34,122 @@ const navItems = [
     { icon: History, label: 'History', href: '/dashboard/history' },
     { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
 ];
+
+function WalletButton() {
+    const { publicKey, connected, disconnect } = useWallet();
+    const { setVisible } = useWalletModal();
+    const { setConnected, setBalance, balance } = useAppStore();
+    const [copied, setCopied] = useState(false);
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    // Sync wallet state with store
+    useEffect(() => {
+        if (connected && publicKey) {
+            setConnected(true, publicKey.toBase58());
+            // Fetch balance
+            getBalance(publicKey.toBase58()).then((bal) => {
+                setBalance(bal);
+            }).catch(console.error);
+        } else {
+            setConnected(false);
+            setBalance(0);
+        }
+    }, [connected, publicKey, setConnected, setBalance]);
+
+    const handleCopy = async () => {
+        if (publicKey) {
+            await navigator.clipboard.writeText(publicKey.toBase58());
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    const handleDisconnect = () => {
+        disconnect();
+        setShowDropdown(false);
+    };
+
+    const shortenAddress = (address: string) => {
+        return `${address.slice(0, 4)}...${address.slice(-4)}`;
+    };
+
+    if (!connected || !publicKey) {
+        return (
+            <button
+                onClick={() => setVisible(true)}
+                className="btn-primary py-2 px-4 text-sm"
+            >
+                <Wallet className="w-4 h-4 mr-2" />
+                Connect Wallet
+            </button>
+        );
+    }
+
+    return (
+        <div className="relative">
+            <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="flex items-center gap-3 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors"
+            >
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="font-mono text-sm">{shortenAddress(publicKey.toBase58())}</span>
+                <span className="text-sm text-muted-foreground">{balance.toFixed(2)} SOL</span>
+            </button>
+
+            <AnimatePresence>
+                {showDropdown && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-40"
+                            onClick={() => setShowDropdown(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="absolute right-0 top-full mt-2 w-64 z-50 glass rounded-xl border border-border p-2"
+                        >
+                            <div className="p-3 border-b border-border mb-2">
+                                <div className="text-sm text-muted-foreground mb-1">Connected Wallet</div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-mono text-sm">{shortenAddress(publicKey.toBase58())}</span>
+                                    <button
+                                        onClick={handleCopy}
+                                        className="p-1 hover:bg-muted rounded transition-colors"
+                                    >
+                                        {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                                    </button>
+                                    <a
+                                        href={`https://solscan.io/account/${publicKey.toBase58()}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1 hover:bg-muted rounded transition-colors"
+                                    >
+                                        <ExternalLink className="w-4 h-4" />
+                                    </a>
+                                </div>
+                            </div>
+                            <div className="p-3 border-b border-border mb-2">
+                                <div className="text-sm text-muted-foreground mb-1">Balance</div>
+                                <div className="text-2xl font-bold">{balance.toFixed(4)} SOL</div>
+                            </div>
+                            <button
+                                onClick={handleDisconnect}
+                                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Disconnect
+                            </button>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
 
 export default function DashboardLayout({
     children,
@@ -51,7 +174,7 @@ export default function DashboardLayout({
                     <div className="flex items-center justify-between h-16 px-4 border-b border-border">
                         <Link href="/" className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
-                                <Rocket className="w-5 h-5 text-white" />
+                                <Terminal className="w-5 h-5 text-white" />
                             </div>
                             {sidebarOpen && (
                                 <motion.span
@@ -108,14 +231,15 @@ export default function DashboardLayout({
 
                     {/* Bottom */}
                     <div className="p-4 border-t border-border">
-                        <button
+                        <Link
+                            href="/"
                             className={cn(
                                 'flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all w-full'
                             )}
                         >
                             <LogOut className="w-5 h-5 flex-shrink-0" />
-                            {sidebarOpen && <span className="font-medium">Disconnect</span>}
-                        </button>
+                            {sidebarOpen && <span className="font-medium">Back to Home</span>}
+                        </Link>
                     </div>
                 </div>
             </aside>
@@ -125,7 +249,7 @@ export default function DashboardLayout({
                 <div className="flex items-center justify-between h-full px-4">
                     <Link href="/" className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                            <Rocket className="w-4 h-4 text-white" />
+                            <Terminal className="w-4 h-4 text-white" />
                         </div>
                         <span className="font-bold">DegenBot</span>
                     </Link>
@@ -164,6 +288,9 @@ export default function DashboardLayout({
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
+                            </div>
+                            <div className="p-4">
+                                <WalletButton />
                             </div>
                             <nav className="p-4 space-y-2">
                                 {navItems.map((item) => {
@@ -210,10 +337,7 @@ export default function DashboardLayout({
                             <Bell className="w-5 h-5" />
                             <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
                         </button>
-                        <button className="btn-primary py-2 px-4 text-sm">
-                            <Wallet className="w-4 h-4 mr-2" />
-                            Connect Wallet
-                        </button>
+                        <WalletButton />
                     </div>
                 </header>
 

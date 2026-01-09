@@ -1,6 +1,10 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import Link from 'next/link';
 import {
     Wallet,
     TrendingUp,
@@ -14,97 +18,24 @@ import {
     DollarSign,
     Percent,
     AlertCircle,
+    X,
+    Search,
+    ArrowUpDown,
+    XOctagon,
 } from 'lucide-react';
-import { cn, formatCurrency, formatPercentage, shortenAddress } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { useAppStore } from '@/lib/store';
+import { getTokenAccounts, fetchTokenPrice } from '@/lib/solana/connection';
 import {
-    LineChart,
-    Line,
+    AreaChart,
+    Area,
     XAxis,
     YAxis,
     Tooltip,
     ResponsiveContainer,
-    AreaChart,
-    Area
 } from 'recharts';
 
-// Mock data for demonstration
-const portfolioStats = [
-    {
-        label: 'Total Balance',
-        value: '$12,450.00',
-        change: '+12.5%',
-        isPositive: true,
-        icon: Wallet,
-        color: 'from-emerald-500 to-teal-500',
-    },
-    {
-        label: '24h P&L',
-        value: '+$1,245.00',
-        change: '+8.2%',
-        isPositive: true,
-        icon: TrendingUp,
-        color: 'from-violet-500 to-purple-500',
-    },
-    {
-        label: 'Active Positions',
-        value: '5',
-        change: '+2 today',
-        isPositive: true,
-        icon: Activity,
-        color: 'from-blue-500 to-cyan-500',
-    },
-    {
-        label: 'Pending Take-Profits',
-        value: '3',
-        change: '2 near target',
-        isPositive: true,
-        icon: Target,
-        color: 'from-amber-500 to-orange-500',
-    },
-];
-
-const positions = [
-    {
-        token: 'BONK',
-        symbol: 'BONK/SOL',
-        amount: '10,000,000',
-        entryPrice: 0.0000012,
-        currentPrice: 0.0000018,
-        pnl: 50.0,
-        pnlValue: 600,
-        takeProfitSet: true,
-        targetPrice: 0.0000024,
-    },
-    {
-        token: 'WIF',
-        symbol: 'WIF/SOL',
-        amount: '1,500',
-        entryPrice: 1.85,
-        currentPrice: 2.12,
-        pnl: 14.6,
-        pnlValue: 405,
-        takeProfitSet: true,
-        targetPrice: 2.50,
-    },
-    {
-        token: 'POPCAT',
-        symbol: 'POPCAT/SOL',
-        amount: '5,000',
-        entryPrice: 0.42,
-        currentPrice: 0.38,
-        pnl: -9.5,
-        pnlValue: -200,
-        takeProfitSet: false,
-        targetPrice: null,
-    },
-];
-
-const recentTransactions = [
-    { type: 'BUY', token: 'BONK', amount: '10M', price: '$120', time: '2h ago', hash: '5xH7...' },
-    { type: 'SELL', token: 'SAMO', amount: '50K', price: '$89', time: '5h ago', hash: '3kL2...' },
-    { type: 'BUY', token: 'WIF', amount: '1.5K', price: '$2,775', time: '1d ago', hash: '9mN4...' },
-];
-
+// Mock chart data
 const chartData = [
     { time: '00:00', value: 11200 },
     { time: '04:00', value: 11800 },
@@ -122,9 +53,417 @@ const takeProfitPresets = [
     { label: '200%', value: 200 },
 ];
 
+// Quick Trade Modal
+function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+    const { connected } = useWallet();
+    const { setVisible } = useWalletModal();
+    const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
+    const [tokenAddress, setTokenAddress] = useState('');
+    const [amount, setAmount] = useState('');
+    const [slippage, setSlippage] = useState(1);
+
+    if (!isOpen) return null;
+
+    return (
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+                onClick={onClose}
+            />
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
+            >
+                <div className="glass rounded-2xl p-6 border border-primary/20">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                                <Zap className="w-5 h-5 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold">Quick Trade</h3>
+                        </div>
+                        <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {!connected ? (
+                        <div className="text-center py-8">
+                            <Wallet className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                            <h4 className="text-lg font-semibold mb-2">Connect Your Wallet</h4>
+                            <p className="text-muted-foreground mb-6">Connect your wallet to start trading</p>
+                            <button
+                                onClick={() => { onClose(); setVisible(true); }}
+                                className="btn-primary"
+                            >
+                                <Wallet className="w-4 h-4 mr-2" />
+                                Connect Wallet
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {/* Trade Type Toggle */}
+                            <div className="flex gap-2 p-1 bg-muted rounded-lg">
+                                <button
+                                    onClick={() => setTradeType('buy')}
+                                    className={cn(
+                                        'flex-1 py-2 rounded-md font-medium transition-all',
+                                        tradeType === 'buy'
+                                            ? 'bg-emerald-500 text-white'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    )}
+                                >
+                                    Buy
+                                </button>
+                                <button
+                                    onClick={() => setTradeType('sell')}
+                                    className={cn(
+                                        'flex-1 py-2 rounded-md font-medium transition-all',
+                                        tradeType === 'sell'
+                                            ? 'bg-red-500 text-white'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    )}
+                                >
+                                    Sell
+                                </button>
+                            </div>
+
+                            {/* Token Address */}
+                            <div>
+                                <label className="text-sm text-muted-foreground mb-2 block">Token Address</label>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                    <input
+                                        type="text"
+                                        value={tokenAddress}
+                                        onChange={(e) => setTokenAddress(e.target.value)}
+                                        placeholder="Paste token mint address..."
+                                        className="input-field pl-10 w-full"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Amount */}
+                            <div>
+                                <label className="text-sm text-muted-foreground mb-2 block">
+                                    Amount ({tradeType === 'buy' ? 'SOL' : 'Tokens'})
+                                </label>
+                                <input
+                                    type="number"
+                                    value={amount}
+                                    onChange={(e) => setAmount(e.target.value)}
+                                    placeholder="0.00"
+                                    className="input-field w-full"
+                                />
+                            </div>
+
+                            {/* Slippage */}
+                            <div>
+                                <label className="text-sm text-muted-foreground mb-2 block">Slippage Tolerance</label>
+                                <div className="flex gap-2">
+                                    {[0.5, 1, 2, 5].map((val) => (
+                                        <button
+                                            key={val}
+                                            onClick={() => setSlippage(val)}
+                                            className={cn(
+                                                'flex-1 py-2 rounded-lg text-sm font-medium border transition-all',
+                                                slippage === val
+                                                    ? 'bg-primary text-primary-foreground border-primary'
+                                                    : 'border-border hover:border-primary/50'
+                                            )}
+                                        >
+                                            {val}%
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Jito Bundle Info */}
+                            <div className="flex items-center gap-2 p-3 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                                <Zap className="w-4 h-4 text-violet-500" />
+                                <span className="text-sm text-violet-400">Jito Bundle protection enabled</span>
+                            </div>
+
+                            {/* Execute Button */}
+                            <button
+                                className={cn(
+                                    'w-full py-3 rounded-lg font-semibold transition-all',
+                                    tradeType === 'buy'
+                                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                                        : 'bg-red-500 hover:bg-red-600 text-white'
+                                )}
+                            >
+                                <ArrowUpDown className="w-4 h-4 mr-2 inline" />
+                                {tradeType === 'buy' ? 'Buy Token' : 'Sell Token'}
+                            </button>
+
+                            <p className="text-xs text-center text-muted-foreground">
+                                1% fee on successful trades • MEV protected
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </motion.div>
+        </AnimatePresence>
+    );
+}
+
+// Set Take-Profit Modal
+function SetTakeProfitModal({
+    isOpen,
+    onClose,
+    position
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    position?: { token: string; symbol: string; pnl: number } | null;
+}) {
+    const [targetPercentage, setTargetPercentage] = useState(50);
+    const [slippage, setSlippage] = useState(1);
+    const [autoExecute, setAutoExecute] = useState(true);
+    const { addTakeProfitOrder } = useAppStore();
+
+    if (!isOpen || !position) return null;
+
+    const handleSave = () => {
+        addTakeProfitOrder({
+            id: Date.now().toString(),
+            positionId: position.token,
+            targetPercentage,
+            slippage,
+            autoExecute,
+            status: 'active',
+        });
+        onClose();
+    };
+
+    return (
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+                onClick={onClose}
+            />
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
+            >
+                <div className="glass rounded-2xl p-6 border border-primary/20">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                                <Target className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold">Set Take-Profit</h3>
+                                <p className="text-sm text-muted-foreground">{position.token} • {position.symbol}</p>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        {/* Target Percentage */}
+                        <div>
+                            <label className="text-sm text-muted-foreground mb-2 block">Target Profit</label>
+                            <div className="grid grid-cols-4 gap-2 mb-2">
+                                {takeProfitPresets.map((preset) => (
+                                    <button
+                                        key={preset.value}
+                                        onClick={() => setTargetPercentage(preset.value)}
+                                        className={cn(
+                                            'py-2 rounded-lg text-sm font-medium border transition-all',
+                                            targetPercentage === preset.value
+                                                ? 'bg-primary text-primary-foreground border-primary'
+                                                : 'border-border hover:border-primary/50'
+                                        )}
+                                    >
+                                        {preset.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <input
+                                type="number"
+                                value={targetPercentage}
+                                onChange={(e) => setTargetPercentage(Number(e.target.value))}
+                                className="input-field w-full"
+                                placeholder="Custom %"
+                            />
+                        </div>
+
+                        {/* Slippage */}
+                        <div>
+                            <label className="text-sm text-muted-foreground mb-2 block">Slippage Tolerance</label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="range"
+                                    min="0.1"
+                                    max="5"
+                                    step="0.1"
+                                    value={slippage}
+                                    onChange={(e) => setSlippage(Number(e.target.value))}
+                                    className="flex-1"
+                                />
+                                <span className="text-sm font-medium w-12 text-right">{slippage}%</span>
+                            </div>
+                        </div>
+
+                        {/* Auto Execute */}
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+                            <div>
+                                <div className="font-medium">Auto-Execute</div>
+                                <div className="text-sm text-muted-foreground">Sell when target reached</div>
+                            </div>
+                            <button
+                                onClick={() => setAutoExecute(!autoExecute)}
+                                className={cn(
+                                    'w-12 h-6 rounded-full transition-colors',
+                                    autoExecute ? 'bg-primary' : 'bg-muted'
+                                )}
+                            >
+                                <div className={cn(
+                                    'w-5 h-5 rounded-full bg-white transition-transform',
+                                    autoExecute ? 'translate-x-6' : 'translate-x-0.5'
+                                )} />
+                            </button>
+                        </div>
+
+                        {/* Summary */}
+                        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                            <div className="text-sm text-emerald-400 mb-1">When {position.token} reaches</div>
+                            <div className="text-2xl font-bold text-emerald-400">+{targetPercentage}%</div>
+                            <div className="text-sm text-emerald-400/70">Auto-sell will execute via Jito bundle</div>
+                        </div>
+
+                        <button onClick={handleSave} className="btn-primary w-full">
+                            <Target className="w-4 h-4 mr-2" />
+                            Save Take-Profit Rule
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        </AnimatePresence>
+    );
+}
+
 export default function DashboardPage() {
+    const { connected, publicKey } = useWallet();
+    const { setVisible } = useWalletModal();
+    const { balance, positions, setPositions } = useAppStore();
+    const [quickTradeOpen, setQuickTradeOpen] = useState(false);
+    const [takeProfitModalOpen, setTakeProfitModalOpen] = useState(false);
+    const [selectedPosition, setSelectedPosition] = useState<any>(null);
+    const [selectedPreset, setSelectedPreset] = useState(50);
+    const [slippage, setSlippage] = useState(1);
+
+    // Mock positions for demo (will be replaced with real data when connected)
+    const demoPositions = [
+        {
+            token: 'BONK',
+            symbol: 'BONK/SOL',
+            amount: '10,000,000',
+            entryPrice: 0.0000012,
+            currentPrice: 0.0000018,
+            pnl: 50.0,
+            pnlValue: 600,
+            takeProfitSet: true,
+            targetPrice: 0.0000024,
+        },
+        {
+            token: 'WIF',
+            symbol: 'WIF/SOL',
+            amount: '1,500',
+            entryPrice: 1.85,
+            currentPrice: 2.12,
+            pnl: 14.6,
+            pnlValue: 405,
+            takeProfitSet: true,
+            targetPrice: 2.50,
+        },
+        {
+            token: 'POPCAT',
+            symbol: 'POPCAT/SOL',
+            amount: '5,000',
+            entryPrice: 0.42,
+            currentPrice: 0.38,
+            pnl: -9.5,
+            pnlValue: -200,
+            takeProfitSet: false,
+            targetPrice: null,
+        },
+    ];
+
+    const displayPositions = positions.length > 0 ? positions : demoPositions;
+
+    const portfolioStats = [
+        {
+            label: 'Total Balance',
+            value: connected ? `${balance.toFixed(2)} SOL` : '$12,450.00',
+            change: '+12.5%',
+            isPositive: true,
+            icon: Wallet,
+            color: 'from-emerald-500 to-teal-500',
+        },
+        {
+            label: '24h P&L',
+            value: '+$1,245.00',
+            change: '+8.2%',
+            isPositive: true,
+            icon: TrendingUp,
+            color: 'from-violet-500 to-purple-500',
+        },
+        {
+            label: 'Active Positions',
+            value: displayPositions.length.toString(),
+            change: '+2 today',
+            isPositive: true,
+            icon: Activity,
+            color: 'from-blue-500 to-cyan-500',
+        },
+        {
+            label: 'Pending Take-Profits',
+            value: displayPositions.filter(p => p.takeProfitSet).length.toString(),
+            change: '2 near target',
+            isPositive: true,
+            icon: Target,
+            color: 'from-amber-500 to-orange-500',
+        },
+    ];
+
+    const recentTransactions = [
+        { type: 'BUY', token: 'BONK', amount: '10M', price: '$120', time: '2h ago', hash: '5xH7...' },
+        { type: 'SELL', token: 'SAMO', amount: '50K', price: '$89', time: '5h ago', hash: '3kL2...' },
+        { type: 'BUY', token: 'WIF', amount: '1.5K', price: '$2,775', time: '1d ago', hash: '9mN4...' },
+    ];
+
+    const handleSetTP = (position: any) => {
+        setSelectedPosition(position);
+        setTakeProfitModalOpen(true);
+    };
+
     return (
         <div className="space-y-6">
+            {/* Quick Trade Modal */}
+            <QuickTradeModal isOpen={quickTradeOpen} onClose={() => setQuickTradeOpen(false)} />
+
+            {/* Set Take-Profit Modal */}
+            <SetTakeProfitModal
+                isOpen={takeProfitModalOpen}
+                onClose={() => setTakeProfitModalOpen(false)}
+                position={selectedPosition}
+            />
+
             {/* Welcome Banner */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -133,13 +472,41 @@ export default function DashboardPage() {
             >
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold mb-1">Welcome back, Trader!</h1>
-                        <p className="text-muted-foreground">Your portfolio is up 12.5% this week. Keep it going! 🚀</p>
+                        <h1 className="text-2xl font-bold mb-1">
+                            {connected ? `Welcome back!` : 'Welcome to DegenBot!'}
+                        </h1>
+                        <p className="text-muted-foreground">
+                            {connected
+                                ? 'Your portfolio is up 12.5% this week. Keep it going! 🚀'
+                                : 'Connect your wallet to start trading with Jito protection.'
+                            }
+                        </p>
                     </div>
-                    <button className="btn-primary">
-                        <Zap className="w-4 h-4 mr-2" />
-                        Quick Trade
-                    </button>
+                    <div className="flex gap-3">
+                        {connected ? (
+                            <>
+                                <button
+                                    onClick={() => setQuickTradeOpen(true)}
+                                    className="btn-primary"
+                                >
+                                    <Zap className="w-4 h-4 mr-2" />
+                                    Quick Trade
+                                </button>
+                                <button className="btn-outline text-red-400 border-red-400/20 hover:bg-red-500/10">
+                                    <XOctagon className="w-4 h-4 mr-2" />
+                                    Kill Switch
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                onClick={() => setVisible(true)}
+                                className="btn-primary"
+                            >
+                                <Wallet className="w-4 h-4 mr-2" />
+                                Connect Wallet
+                            </button>
+                        )}
+                    </div>
                 </div>
             </motion.div>
 
@@ -259,9 +626,10 @@ export default function DashboardPage() {
                                 {takeProfitPresets.map((preset) => (
                                     <button
                                         key={preset.value}
+                                        onClick={() => setSelectedPreset(preset.value)}
                                         className={cn(
                                             'py-2 rounded-lg text-sm font-medium transition-all border',
-                                            preset.value === 50
+                                            selectedPreset === preset.value
                                                 ? 'bg-primary text-primary-foreground border-primary'
                                                 : 'border-border hover:border-primary/50 hover:bg-muted'
                                         )}
@@ -280,21 +648,27 @@ export default function DashboardPage() {
                                     min="0.1"
                                     max="5"
                                     step="0.1"
-                                    defaultValue="1"
+                                    value={slippage}
+                                    onChange={(e) => setSlippage(Number(e.target.value))}
                                     className="flex-1"
                                 />
-                                <span className="text-sm font-medium w-12 text-right">1.0%</span>
+                                <span className="text-sm font-medium w-12 text-right">{slippage.toFixed(1)}%</span>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                            <span className="text-sm text-amber-500">Connect wallet to enable auto-execution</span>
-                        </div>
+                        {!connected && (
+                            <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                                <span className="text-sm text-amber-500">Connect wallet to enable auto-execution</span>
+                            </div>
+                        )}
 
-                        <button className="btn-primary w-full">
+                        <button
+                            onClick={() => connected ? null : setVisible(true)}
+                            className="btn-primary w-full"
+                        >
                             <Zap className="w-4 h-4 mr-2" />
-                            Set Take-Profit
+                            {connected ? 'Set Take-Profit' : 'Connect Wallet'}
                         </button>
                     </div>
                 </motion.div>
@@ -309,9 +683,9 @@ export default function DashboardPage() {
             >
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold">Active Positions</h2>
-                    <button className="text-sm text-primary hover:underline flex items-center gap-1">
+                    <Link href="/dashboard/positions" className="text-sm text-primary hover:underline flex items-center gap-1">
                         View All <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </Link>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -328,7 +702,7 @@ export default function DashboardPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {positions.map((position, index) => (
+                            {displayPositions.map((position, index) => (
                                 <tr key={index} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                                     <td className="py-4 px-4">
                                         <div className="flex items-center gap-3">
@@ -372,7 +746,10 @@ export default function DashboardPage() {
                                         )}
                                     </td>
                                     <td className="py-4 px-4 text-right">
-                                        <button className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors">
+                                        <button
+                                            onClick={() => handleSetTP(position)}
+                                            className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
+                                        >
                                             {position.takeProfitSet ? 'Edit' : 'Set TP'}
                                         </button>
                                     </td>
@@ -392,9 +769,9 @@ export default function DashboardPage() {
             >
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold">Recent Transactions</h2>
-                    <button className="text-sm text-primary hover:underline flex items-center gap-1">
+                    <Link href="/dashboard/history" className="text-sm text-primary hover:underline flex items-center gap-1">
                         View All <ChevronRight className="w-4 h-4" />
-                    </button>
+                    </Link>
                 </div>
 
                 <div className="space-y-3">

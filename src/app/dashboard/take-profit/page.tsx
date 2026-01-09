@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import {
     Target,
     Plus,
@@ -14,45 +16,12 @@ import {
     Percent,
     DollarSign,
     TrendingUp,
-    Clock
+    Clock,
+    CheckCircle,
+    Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const activeRules = [
-    {
-        id: 1,
-        token: 'BONK',
-        symbol: 'BONK/SOL',
-        targetPercentage: 100,
-        currentPnl: 50,
-        slippage: 1.0,
-        autoExecute: true,
-        createdAt: '2024-01-15',
-        status: 'active',
-    },
-    {
-        id: 2,
-        token: 'WIF',
-        symbol: 'WIF/SOL',
-        targetPercentage: 50,
-        currentPnl: 14.6,
-        slippage: 0.5,
-        autoExecute: true,
-        createdAt: '2024-01-14',
-        status: 'active',
-    },
-    {
-        id: 3,
-        token: 'MYRO',
-        symbol: 'MYRO/SOL',
-        targetPercentage: 100,
-        currentPnl: 37.5,
-        slippage: 1.0,
-        autoExecute: false,
-        createdAt: '2024-01-12',
-        status: 'active',
-    },
-];
+import { useAppStore } from '@/lib/store';
 
 const presets = [
     { name: 'Conservative', percentage: 25, slippage: 0.5, description: 'Low risk, quick profits' },
@@ -62,10 +31,86 @@ const presets = [
 ];
 
 export default function TakeProfitPage() {
+    const { connected } = useWallet();
+    const { setVisible } = useWalletModal();
+    const { takeProfitOrders, addTakeProfitOrder, removeTakeProfitOrder, updateTakeProfitOrder } = useAppStore();
+
     const [selectedPreset, setSelectedPreset] = useState(1);
     const [customPercentage, setCustomPercentage] = useState(50);
     const [slippage, setSlippage] = useState(1.0);
     const [autoExecute, setAutoExecute] = useState(true);
+    const [showSuccess, setShowSuccess] = useState(false);
+
+    // Demo active rules
+    const activeRules = [
+        {
+            id: '1',
+            token: 'BONK',
+            symbol: 'BONK/SOL',
+            targetPercentage: 100,
+            currentPnl: 50,
+            slippage: 1.0,
+            autoExecute: true,
+            createdAt: '2024-01-15',
+            status: 'active' as const,
+        },
+        {
+            id: '2',
+            token: 'WIF',
+            symbol: 'WIF/SOL',
+            targetPercentage: 50,
+            currentPnl: 14.6,
+            slippage: 0.5,
+            autoExecute: true,
+            createdAt: '2024-01-14',
+            status: 'active' as const,
+        },
+        {
+            id: '3',
+            token: 'MYRO',
+            symbol: 'MYRO/SOL',
+            targetPercentage: 100,
+            currentPnl: 37.5,
+            slippage: 1.0,
+            autoExecute: false,
+            createdAt: '2024-01-12',
+            status: 'active' as const,
+        },
+    ];
+
+    const displayRules = takeProfitOrders.length > 0 ? takeProfitOrders.map(order => ({
+        id: order.id,
+        token: order.positionId,
+        symbol: `${order.positionId}/SOL`,
+        targetPercentage: order.targetPercentage,
+        currentPnl: 0,
+        slippage: order.slippage,
+        autoExecute: order.autoExecute,
+        createdAt: new Date().toISOString().split('T')[0],
+        status: order.status,
+    })) : activeRules;
+
+    const handleApplyToAll = () => {
+        if (!connected) {
+            setVisible(true);
+            return;
+        }
+
+        // Show success message
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+    };
+
+    const handleDeleteRule = (id: string) => {
+        removeTakeProfitOrder(id);
+    };
+
+    const handleToggleAutoExecute = (id: string, current: boolean) => {
+        updateTakeProfitOrder(id, { autoExecute: !current });
+    };
+
+    const protectedValue = displayRules.length * 2500; // Dummy calculation
+    const rulesWithAuto = displayRules.filter(r => r.autoExecute).length;
 
     return (
         <div className="space-y-6">
@@ -75,9 +120,12 @@ export default function TakeProfitPage() {
                     <h1 className="text-2xl font-bold">Take-Profit Rules</h1>
                     <p className="text-muted-foreground">Configure automatic take-profit execution</p>
                 </div>
-                <button className="btn-primary">
+                <button
+                    onClick={() => connected ? null : setVisible(true)}
+                    className="btn-primary"
+                >
                     <Plus className="w-4 h-4 mr-2" />
-                    New Rule
+                    {connected ? 'New Rule' : 'Connect Wallet'}
                 </button>
             </div>
 
@@ -132,7 +180,7 @@ export default function TakeProfitPage() {
                                     type="number"
                                     value={customPercentage}
                                     onChange={(e) => setCustomPercentage(Number(e.target.value))}
-                                    className="input-field pl-10"
+                                    className="input-field pl-10 w-full"
                                     placeholder="50"
                                 />
                             </div>
@@ -148,7 +196,7 @@ export default function TakeProfitPage() {
                                     value={slippage}
                                     onChange={(e) => setSlippage(Number(e.target.value))}
                                     step="0.1"
-                                    className="input-field pl-10"
+                                    className="input-field pl-10 w-full"
                                     placeholder="1.0"
                                 />
                             </div>
@@ -175,20 +223,45 @@ export default function TakeProfitPage() {
                         </button>
                     </div>
 
-                    {/* Warning */}
-                    <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-6">
-                        <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                            <div className="font-medium text-amber-500">Connect Wallet Required</div>
-                            <div className="text-sm text-amber-500/80">
-                                You need to connect your wallet to enable auto-execution feature.
+                    {/* Warning or Success */}
+                    {showSuccess ? (
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mb-6">
+                            <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <div className="font-medium text-emerald-500">Rules Applied!</div>
+                                <div className="text-sm text-emerald-500/80">
+                                    Take-profit rules have been applied to all positions.
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    ) : !connected ? (
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-6">
+                            <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <div className="font-medium text-amber-500">Connect Wallet Required</div>
+                                <div className="text-sm text-amber-500/80">
+                                    You need to connect your wallet to enable auto-execution feature.
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-start gap-3 p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 mb-6">
+                            <Zap className="w-5 h-5 text-violet-500 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <div className="font-medium text-violet-500">Jito Bundle Protection</div>
+                                <div className="text-sm text-violet-500/80">
+                                    All take-profit orders will be executed via Jito bundles for MEV protection.
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-                    <button className="btn-primary w-full">
+                    <button
+                        onClick={handleApplyToAll}
+                        className="btn-primary w-full"
+                    >
                         <Zap className="w-4 h-4 mr-2" />
-                        Apply to All Positions
+                        {connected ? 'Apply to All Positions' : 'Connect Wallet'}
                     </button>
                 </motion.div>
 
@@ -204,8 +277,8 @@ export default function TakeProfitPage() {
                             <Target className="w-5 h-5 text-primary" />
                             <h3 className="font-semibold">Active Rules</h3>
                         </div>
-                        <div className="text-4xl font-bold mb-2">3</div>
-                        <div className="text-sm text-muted-foreground">2 with auto-execute</div>
+                        <div className="text-4xl font-bold mb-2">{displayRules.length}</div>
+                        <div className="text-sm text-muted-foreground">{rulesWithAuto} with auto-execute</div>
                     </div>
 
                     <div className="glass rounded-2xl p-6">
@@ -213,7 +286,7 @@ export default function TakeProfitPage() {
                             <DollarSign className="w-5 h-5 text-emerald-400" />
                             <h3 className="font-semibold">Protected Value</h3>
                         </div>
-                        <div className="text-4xl font-bold text-emerald-400 mb-2">$7,730</div>
+                        <div className="text-4xl font-bold text-emerald-400 mb-2">${protectedValue.toLocaleString()}</div>
                         <div className="text-sm text-muted-foreground">If all targets hit</div>
                     </div>
 
@@ -237,57 +310,79 @@ export default function TakeProfitPage() {
             >
                 <h2 className="text-lg font-semibold mb-6">Active Take-Profit Rules</h2>
 
-                <div className="space-y-4">
-                    {activeRules.map((rule, index) => (
-                        <div
-                            key={rule.id}
-                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-lg font-bold">
-                                    {rule.token[0]}
-                                </div>
-                                <div>
-                                    <div className="font-semibold">{rule.token}</div>
-                                    <div className="text-sm text-muted-foreground">{rule.symbol}</div>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-6">
-                                <div>
-                                    <div className="text-sm text-muted-foreground">Target</div>
-                                    <div className="font-semibold text-primary">+{rule.targetPercentage}%</div>
-                                </div>
-                                <div>
-                                    <div className="text-sm text-muted-foreground">Current</div>
-                                    <div className="font-semibold text-emerald-400">+{rule.currentPnl}%</div>
-                                </div>
-                                <div>
-                                    <div className="text-sm text-muted-foreground">Slippage</div>
-                                    <div className="font-semibold">{rule.slippage}%</div>
-                                </div>
-                                <div>
-                                    <div className="text-sm text-muted-foreground">Auto</div>
-                                    <div className={cn(
-                                        'font-semibold',
-                                        rule.autoExecute ? 'text-emerald-400' : 'text-muted-foreground'
-                                    )}>
-                                        {rule.autoExecute ? 'On' : 'Off'}
+                {displayRules.length === 0 ? (
+                    <div className="text-center py-12">
+                        <Target className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                        <h3 className="text-xl font-semibold mb-2">No active rules</h3>
+                        <p className="text-muted-foreground mb-6">Set take-profit rules on your positions to see them here</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {displayRules.map((rule, index) => (
+                            <div
+                                key={rule.id}
+                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-lg font-bold">
+                                        {rule.token[0]}
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold">{rule.token}</div>
+                                        <div className="text-sm text-muted-foreground">{rule.symbol}</div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 ml-auto">
-                                    <button className="p-2 rounded-lg hover:bg-muted transition-colors">
-                                        <Settings className="w-4 h-4" />
-                                    </button>
-                                    <button className="p-2 rounded-lg hover:bg-red-500/10 text-red-400 transition-colors">
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                <div className="flex flex-wrap items-center gap-6">
+                                    <div>
+                                        <div className="text-sm text-muted-foreground">Target</div>
+                                        <div className="font-semibold text-primary">+{rule.targetPercentage}%</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-muted-foreground">Current</div>
+                                        <div className="font-semibold text-emerald-400">+{rule.currentPnl}%</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-muted-foreground">Slippage</div>
+                                        <div className="font-semibold">{rule.slippage}%</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm text-muted-foreground">Auto</div>
+                                        <div className={cn(
+                                            'font-semibold',
+                                            rule.autoExecute ? 'text-emerald-400' : 'text-muted-foreground'
+                                        )}>
+                                            {rule.autoExecute ? 'On' : 'Off'}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 ml-auto">
+                                        <button
+                                            onClick={() => handleToggleAutoExecute(rule.id, rule.autoExecute)}
+                                            className="p-2 rounded-lg hover:bg-muted transition-colors"
+                                            title="Toggle auto-execute"
+                                        >
+                                            {rule.autoExecute ? (
+                                                <ToggleRight className="w-5 h-5 text-emerald-400" />
+                                            ) : (
+                                                <ToggleLeft className="w-5 h-5 text-muted-foreground" />
+                                            )}
+                                        </button>
+                                        <button className="p-2 rounded-lg hover:bg-muted transition-colors">
+                                            <Settings className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteRule(rule.id)}
+                                            className="p-2 rounded-lg hover:bg-red-500/10 text-red-400 transition-colors"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </motion.div>
         </div>
     );
