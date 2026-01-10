@@ -13,10 +13,9 @@ interface Props {
 }
 
 export const WalletProvider: FC<Props> = ({ children }) => {
-    // Use Ankr free public RPC - more reliable than official Solana RPC
-    // (Official RPC blocks requests from Vercel with 403)
+    // Use PublicNode free RPC - allows requests from Vercel without API key
     const endpoint = useMemo(() => {
-        return process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://rpc.ankr.com/solana';
+        return process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://solana-rpc.publicnode.com';
     }, []);
 
     // Configure wallets
