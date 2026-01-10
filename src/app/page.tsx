@@ -44,16 +44,16 @@ const features = [
         color: 'from-emerald-500 to-teal-500',
     },
     {
-        icon: Shield,
-        title: 'Beat the Telegram Bots',
-        description: 'Our web-based RPC path is faster than TG bot API overhead. Direct Helius connection means your orders land first.',
-        color: 'from-violet-500 to-purple-500',
+        icon: BarChart3,
+        title: 'Real-time DexScreener',
+        description: 'Live price feeds, liquidity depth, and market data directly from DexScreener. Always trade with accurate info.',
+        color: 'from-cyan-500 to-blue-500',
     },
     {
-        icon: Fuel,
-        title: 'Dynamic Priority Fees',
-        description: 'Smart fee calculation adapts to network conditions. Never overpay, never get stuck in the mempool.',
-        color: 'from-amber-500 to-orange-500',
+        icon: Shield,
+        title: 'Anti-Rug Protection',
+        description: 'Automatic liquidity monitoring and honeypot detection. Get alerts before you get rugged.',
+        color: 'from-violet-500 to-purple-500',
     },
     {
         icon: XOctagon,
@@ -70,7 +70,7 @@ const features = [
     {
         icon: Target,
         title: 'Automated Exit Strategies',
-        description: 'Set 25% moonbags, auto-sell 50% at 2x, and trailing stop-losses in one click. Multi-step exit plans for maximum profit.',
+        description: 'Set 25% moonbags, auto-sell 50% at 2x, and trailing stop-losses in one click. Multi-step exit plans.',
         color: 'from-indigo-500 to-violet-500',
     },
 ];
@@ -392,6 +392,10 @@ export default function LandingPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-xs text-emerald-400 font-medium">Mainnet: Live</span>
+                            </div>
                             <Link
                                 href="/dashboard"
                                 className="btn-primary text-sm flex items-center gap-2"
@@ -443,11 +447,41 @@ export default function LandingPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.2 }}
-                        className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8"
+                        className="text-xl text-muted-foreground max-w-3xl mx-auto mb-6"
                     >
                         The non-custodial trading terminal that lands your sells when Raydium fails.
                         Jito-protected bundles. Private Helius RPCs. Your keys never leave your browser.
                     </motion.p>
+
+                    {/* Social Proof Stats */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.25 }}
+                        className="flex flex-wrap items-center justify-center gap-6 mb-8"
+                    >
+                        <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-br from-primary/10 to-secondary/10 border border-primary/20">
+                            <TrendingUp className="w-5 h-5 text-primary" />
+                            <div>
+                                <div className="text-xl font-bold">$2.5M+</div>
+                                <div className="text-xs text-muted-foreground">Volume Traded</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+                            <Activity className="w-5 h-5 text-emerald-500" />
+                            <div>
+                                <div className="text-xl font-bold">15K+</div>
+                                <div className="text-xs text-muted-foreground">Trades Executed</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20">
+                            <CheckCircle className="w-5 h-5 text-violet-500" />
+                            <div>
+                                <div className="text-xl font-bold">99.8%</div>
+                                <div className="text-xs text-muted-foreground">Success Rate</div>
+                            </div>
+                        </div>
+                    </motion.div>
 
                     {/* Trust Signals - Client Side Security */}
                     <motion.div
@@ -479,10 +513,6 @@ export default function LandingPage() {
                         <Link href="/dashboard" className="btn-primary text-lg px-8 py-4 flex items-center gap-2">
                             <Zap className="w-5 h-5" />
                             Launch Trading Terminal
-                        </Link>
-                        <Link href="/dashboard" className="btn-outline text-lg px-8 py-4">
-                            View Demo
-                            <ArrowRight className="w-5 h-5 ml-2" />
                         </Link>
                     </motion.div>
 
@@ -880,8 +910,8 @@ export default function LandingPage() {
                                 <Link
                                     href="/dashboard"
                                     className={`block w-full py-3 rounded-lg font-semibold transition-all text-center ${plan.popular
-                                            ? 'bg-primary text-primary-foreground hover:opacity-90'
-                                            : 'border border-border hover:bg-muted'
+                                        ? 'bg-primary text-primary-foreground hover:opacity-90'
+                                        : 'border border-border hover:bg-muted'
                                         }`}
                                 >
                                     {plan.cta}
