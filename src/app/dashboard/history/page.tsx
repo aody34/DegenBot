@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
     History,
@@ -17,8 +18,9 @@ import {
     Target
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { loadTradeHistory } from '@/lib/solana/takeProfit';
 
-const transactions = [
+const demoTransactions = [
     {
         id: 1,
         type: 'SELL',
@@ -117,14 +119,96 @@ const transactions = [
     },
 ];
 
-const stats = [
-    { label: 'Total Trades', value: '156', change: '+12 this week' },
-    { label: 'Win Rate', value: '68%', change: '+5% vs last month' },
-    { label: 'Total Profit', value: '+$4,280', change: 'All time' },
-    { label: 'Avg. Return', value: '+23.5%', change: 'Per trade' },
-];
-
 export default function HistoryPage() {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Load real trade history and merge with demo data
+    const transactions = useMemo(() => {
+        const realTrades = loadTradeHistory();
+        if (realTrades.length > 0) {
+            return realTrades.map((t, i) => ({
+                id: i,
+                type: t.type.toUpperCase(),
+                action: t.isTakeProfitOrder ? 'Take-Profit' : t.type === 'buy' ? 'Market Buy' : 'Manual Sell',
+                token: t.tokenSymbol,
+                symbol: `${t.tokenSymbol}/SOL`,
+                amount: t.amount.toLocaleString(),
+                entryPrice: t.type === 'buy' ? null : 0,
+                exitPrice: t.price,
+                pnl: null,
+                pnlValue: null,
+                fee: 0,
+                timestamp: new Date(t.timestamp).toISOString().replace('T', ' ').slice(0, 19),
+                hash: t.txSignature,
+                status: 'completed',
+            }));
+        }
+        return demoTransactions;
+    }, []);
+
+    // Filter transactions
+    const filteredTransactions = useMemo(() => {
+        return transactions.filter(tx => {
+            const matchesSearch = tx.token.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                tx.hash.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesType = typeFilter === 'all' ||
+                (typeFilter === 'buys' && tx.type === 'BUY') ||
+                (typeFilter === 'sells' && tx.type === 'SELL') ||
+                (typeFilter === 'tp' && tx.action === 'Take-Profit');
+            return matchesSearch && matchesType;
+        });
+    }, [transactions, searchQuery, typeFilter]);
+
+    // Pagination
+    const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+    const paginatedTxs = filteredTransactions.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    // Stats
+    const stats = useMemo(() => {
+        const totalTrades = transactions.length;
+        const wins = transactions.filter(tx => tx.pnl !== null && tx.pnl > 0).length;
+        const totalProfit = transactions.reduce((sum, tx) => sum + (tx.pnlValue || 0), 0);
+        const avgReturn = transactions.filter(tx => tx.pnl !== null).length > 0
+            ? transactions.filter(tx => tx.pnl !== null).reduce((sum, tx) => sum + (tx.pnl || 0), 0) / transactions.filter(tx => tx.pnl !== null).length
+            : 0;
+
+        return [
+            { label: 'Total Trades', value: totalTrades.toString(), change: 'All time' },
+            { label: 'Win Rate', value: totalTrades > 0 ? `${Math.round(wins / totalTrades * 100)}%` : '0%', change: 'Profitable trades' },
+            { label: 'Total Profit', value: totalProfit >= 0 ? `+$${totalProfit.toFixed(0)}` : `-$${Math.abs(totalProfit).toFixed(0)}`, change: 'All time' },
+            { label: 'Avg. Return', value: `${avgReturn >= 0 ? '+' : ''}${avgReturn.toFixed(1)}%`, change: 'Per trade' },
+        ];
+    }, [transactions]);
+
+    // Export CSV
+    const handleExportCSV = () => {
+        const headers = ['Token', 'Type', 'Action', 'Amount', 'Price', 'P&L %', 'P&L Value', 'Time', 'Hash'];
+        const rows = transactions.map(tx => [
+            tx.token,
+            tx.type,
+            tx.action,
+            tx.amount,
+            tx.exitPrice,
+            tx.pnl ?? '',
+            tx.pnlValue ?? '',
+            tx.timestamp,
+            tx.hash
+        ]);
+
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `degenbot_history_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+    };
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -133,7 +217,7 @@ export default function HistoryPage() {
                     <h1 className="text-2xl font-bold">Transaction History</h1>
                     <p className="text-muted-foreground">View all your past trades and take-profits</p>
                 </div>
-                <button className="btn-outline">
+                <button onClick={handleExportCSV} className="btn-outline">
                     <Download className="w-4 h-4 mr-2" />
                     Export CSV
                 </button>
@@ -169,7 +253,9 @@ export default function HistoryPage() {
                         <input
                             type="text"
                             placeholder="Search by token or hash..."
-                            className="input-field pl-10"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="input-field pl-10 w-full"
                         />
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -178,11 +264,15 @@ export default function HistoryPage() {
                             Date Range
                             <ChevronDown className="w-4 h-4" />
                         </button>
-                        <select className="input-field w-auto">
-                            <option>All Types</option>
-                            <option>Buys Only</option>
-                            <option>Sells Only</option>
-                            <option>Take-Profits</option>
+                        <select
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value)}
+                            className="input-field w-auto"
+                        >
+                            <option value="all">All Types</option>
+                            <option value="buys">Buys Only</option>
+                            <option value="sells">Sells Only</option>
+                            <option value="tp">Take-Profits</option>
                         </select>
                     </div>
                 </div>
@@ -209,7 +299,7 @@ export default function HistoryPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {transactions.map((tx, index) => (
+                            {paginatedTxs.map((tx, index) => (
                                 <tr
                                     key={tx.id}
                                     className="border-t border-border/50 hover:bg-muted/20 transition-colors"
@@ -294,22 +384,35 @@ export default function HistoryPage() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between p-4 border-t border-border/50">
                     <div className="text-sm text-muted-foreground">
-                        Showing 1-6 of 156 transactions
+                        Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length} transactions
                     </div>
                     <div className="flex gap-2">
-                        <button className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-sm">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             Previous
                         </button>
-                        <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm">
-                            1
-                        </button>
-                        <button className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-sm">
-                            2
-                        </button>
-                        <button className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-sm">
-                            3
-                        </button>
-                        <button className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-sm">
+                        {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => i + 1).map(page => (
+                            <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={cn(
+                                    'px-4 py-2 rounded-lg text-sm transition-colors',
+                                    currentPage === page
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'border border-border hover:bg-muted'
+                                )}
+                            >
+                                {page}
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages || totalPages === 0}
+                            className="px-4 py-2 rounded-lg border border-border hover:bg-muted transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             Next
                         </button>
                     </div>

@@ -6,9 +6,9 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { useConnection } from '@solana/wallet-adapter-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
-import { getBalance } from '@/lib/solana/connection';
 import {
     LayoutDashboard,
     Briefcase,
@@ -37,24 +37,38 @@ const navItems = [
 
 function WalletButton() {
     const { publicKey, connected, disconnect } = useWallet();
+    const { connection } = useConnection();
     const { setVisible } = useWalletModal();
     const { setConnected, setBalance, balance } = useAppStore();
     const [copied, setCopied] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
 
-    // Sync wallet state with store
+    // Sync wallet state with store and fetch balance
     useEffect(() => {
         if (connected && publicKey) {
             setConnected(true, publicKey.toBase58());
-            // Fetch balance
-            getBalance(publicKey.toBase58()).then((bal) => {
-                setBalance(bal);
+            // Fetch balance using the connection from wallet adapter
+            connection.getBalance(publicKey).then((bal) => {
+                setBalance(bal / 1e9); // Convert lamports to SOL
             }).catch(console.error);
         } else {
             setConnected(false);
             setBalance(0);
         }
-    }, [connected, publicKey, setConnected, setBalance]);
+    }, [connected, publicKey, connection, setConnected, setBalance]);
+
+    // Refresh balance periodically
+    useEffect(() => {
+        if (!connected || !publicKey) return;
+
+        const interval = setInterval(() => {
+            connection.getBalance(publicKey).then((bal) => {
+                setBalance(bal / 1e9);
+            }).catch(console.error);
+        }, 30000); // Every 30 seconds
+
+        return () => clearInterval(interval);
+    }, [connected, publicKey, connection, setBalance]);
 
     const handleCopy = async () => {
         if (publicKey) {
