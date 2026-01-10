@@ -77,16 +77,16 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md px-4"
+                className="fixed left-1/2 top-4 -translate-x-1/2 z-50 w-full max-w-sm px-4"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="glass rounded-2xl p-6 border border-primary/20 max-h-[90vh] overflow-y-auto">
-                    <div className="flex items-center justify-between mb-6">
+                <div className="glass rounded-xl p-4 border border-primary/20 max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                                <Zap className="w-5 h-5 text-white" />
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                                <Zap className="w-4 h-4 text-white" />
                             </div>
-                            <h3 className="text-xl font-bold">Quick Trade</h3>
+                            <h3 className="text-lg font-bold">Quick Trade</h3>
                         </div>
                         <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
                             <X className="w-5 h-5" />
@@ -94,10 +94,10 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                     </div>
 
                     {!connected ? (
-                        <div className="text-center py-8">
-                            <Wallet className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                            <h4 className="text-lg font-semibold mb-2">Connect Your Wallet</h4>
-                            <p className="text-muted-foreground mb-6">Connect your wallet to start trading</p>
+                        <div className="text-center py-4">
+                            <Wallet className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
+                            <h4 className="font-semibold mb-1">Connect Your Wallet</h4>
+                            <p className="text-muted-foreground text-sm mb-4">Connect to start trading</p>
                             <button
                                 onClick={() => { onClose(); setVisible(true); }}
                                 className="btn-primary"
@@ -107,7 +107,7 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                             </button>
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-2">
                             {/* Trade Type Toggle */}
                             <div className="flex gap-2 p-1 bg-muted rounded-lg">
                                 <button
@@ -136,22 +136,22 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 
                             {/* Token Address */}
                             <div>
-                                <label className="text-sm text-muted-foreground mb-2 block">Token Address</label>
+                                <label className="text-xs text-muted-foreground mb-1 block">Token Address</label>
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                     <input
                                         type="text"
                                         value={tokenAddress}
                                         onChange={(e) => setTokenAddress(e.target.value)}
                                         placeholder="Paste token mint address..."
-                                        className="input-field pl-10 w-full"
+                                        className="input-field pl-8 w-full text-sm py-2"
                                     />
                                 </div>
                             </div>
 
                             {/* Amount */}
                             <div>
-                                <label className="text-sm text-muted-foreground mb-2 block">
+                                <label className="text-xs text-muted-foreground mb-1 block">
                                     Amount ({tradeType === 'buy' ? 'SOL' : 'Tokens'})
                                 </label>
                                 <input
@@ -159,20 +159,20 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
                                     placeholder="0.00"
-                                    className="input-field w-full"
+                                    className="input-field w-full text-sm py-2"
                                 />
                             </div>
 
                             {/* Slippage */}
                             <div>
-                                <label className="text-sm text-muted-foreground mb-2 block">Slippage Tolerance</label>
-                                <div className="flex gap-2">
+                                <label className="text-xs text-muted-foreground mb-1 block">Slippage</label>
+                                <div className="flex gap-1">
                                     {[0.5, 1, 2, 5].map((val) => (
                                         <button
                                             key={val}
                                             onClick={() => setSlippage(val)}
                                             className={cn(
-                                                'flex-1 py-2 rounded-lg text-sm font-medium border transition-all',
+                                                'flex-1 py-1.5 rounded text-xs font-medium border transition-all',
                                                 slippage === val
                                                     ? 'bg-primary text-primary-foreground border-primary'
                                                     : 'border-border hover:border-primary/50'
@@ -185,15 +185,15 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                             </div>
 
                             {/* Jito Bundle Info */}
-                            <div className="flex items-center gap-2 p-3 rounded-lg bg-violet-500/10 border border-violet-500/20">
-                                <Zap className="w-4 h-4 text-violet-500" />
-                                <span className="text-sm text-violet-400">Jito Bundle protection enabled</span>
+                            <div className="flex items-center gap-2 p-2 rounded bg-violet-500/10 border border-violet-500/20">
+                                <Zap className="w-3 h-3 text-violet-500" />
+                                <span className="text-xs text-violet-400">Jito Bundle protection</span>
                             </div>
 
                             {/* Execute Button */}
                             <button
                                 className={cn(
-                                    'w-full py-3 rounded-lg font-semibold transition-all',
+                                    'w-full py-2.5 rounded-lg font-semibold transition-all text-sm',
                                     tradeType === 'buy'
                                         ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
                                         : 'bg-red-500 hover:bg-red-600 text-white'
