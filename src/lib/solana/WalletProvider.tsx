@@ -13,10 +13,10 @@ interface Props {
 }
 
 export const WalletProvider: FC<Props> = ({ children }) => {
-    // Use Helius free public RPC for reliable connections
-    // You can replace this with your own Helius API key for better performance
+    // Use Ankr free public RPC - more reliable than official Solana RPC
+    // (Official RPC blocks requests from Vercel with 403)
     const endpoint = useMemo(() => {
-        return process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+        return process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://rpc.ankr.com/solana';
     }, []);
 
     // Configure wallets
