@@ -60,6 +60,12 @@ interface AppState {
     // Transactions
     transactions: Transaction[];
 
+    // Entry Prices (tokenMint -> price)
+    entryPrices: Record<string, number>;
+
+    // TP Monitoring
+    tpMonitoringActive: boolean;
+
     // Settings
     settings: Settings;
 
@@ -75,6 +81,8 @@ interface AppState {
     updateTakeProfitOrder: (id: string, updates: Partial<TakeProfitOrder>) => void;
     removeTakeProfitOrder: (id: string) => void;
     addTransaction: (transaction: Transaction) => void;
+    setEntryPrice: (tokenMint: string, price: number) => void;
+    setTpMonitoringActive: (active: boolean) => void;
     updateSettings: (settings: Partial<Settings>) => void;
     reset: () => void;
 }
@@ -98,6 +106,8 @@ export const useAppStore = create<AppState>()(
             positions: [],
             takeProfitOrders: [],
             transactions: [],
+            entryPrices: {},
+            tpMonitoringActive: false,
             settings: defaultSettings,
 
             // Actions
@@ -147,6 +157,14 @@ export const useAppStore = create<AppState>()(
                     transactions: [transaction, ...state.transactions],
                 })),
 
+            setEntryPrice: (tokenMint, price) =>
+                set((state) => ({
+                    entryPrices: { ...state.entryPrices, [tokenMint]: price },
+                })),
+
+            setTpMonitoringActive: (active) =>
+                set({ tpMonitoringActive: active }),
+
             updateSettings: (newSettings) =>
                 set((state) => ({
                     settings: { ...state.settings, ...newSettings },
@@ -160,6 +178,8 @@ export const useAppStore = create<AppState>()(
                     positions: [],
                     takeProfitOrders: [],
                     transactions: [],
+                    entryPrices: {},
+                    tpMonitoringActive: false,
                     settings: defaultSettings,
                 }),
         }),
