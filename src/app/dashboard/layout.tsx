@@ -46,11 +46,25 @@ function WalletButton() {
     // Sync wallet state with store and fetch balance
     useEffect(() => {
         if (connected && publicKey) {
+            console.log('[DegenBot] Wallet connected:', publicKey.toBase58());
             setConnected(true, publicKey.toBase58());
             // Fetch balance using the connection from wallet adapter
-            connection.getBalance(publicKey).then((bal) => {
-                setBalance(bal / 1e9); // Convert lamports to SOL
-            }).catch(console.error);
+            console.log('[DegenBot] Fetching balance...');
+            connection.getBalance(publicKey)
+                .then((bal) => {
+                    const solBalance = bal / 1e9;
+                    console.log('[DegenBot] Balance fetched:', solBalance, 'SOL');
+                    setBalance(solBalance);
+                })
+                .catch((error) => {
+                    console.error('[DegenBot] Balance fetch error:', error);
+                    // Try again with a slight delay
+                    setTimeout(() => {
+                        connection.getBalance(publicKey)
+                            .then((bal) => setBalance(bal / 1e9))
+                            .catch(console.error);
+                    }, 2000);
+                });
         } else {
             setConnected(false);
             setBalance(0);
