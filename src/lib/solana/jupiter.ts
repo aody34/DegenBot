@@ -2,9 +2,9 @@
 
 import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js';
 
-// Jupiter API endpoints
-const JUPITER_QUOTE_API = 'https://quote-api.jup.ag/v6/quote';
-const JUPITER_SWAP_API = 'https://quote-api.jup.ag/v6/swap';
+// Use proxy API routes to bypass network restrictions
+const JUPITER_QUOTE_API = '/api/jupiter/quote';
+const JUPITER_SWAP_API = '/api/jupiter/swap';
 const JUPITER_PRICE_API = 'https://price.jup.ag/v6/price';
 
 // Common token addresses
@@ -35,7 +35,7 @@ export interface SwapResult {
 }
 
 /**
- * Get a swap quote from Jupiter
+ * Get a swap quote from Jupiter (via proxy)
  */
 export async function getQuote(
     inputMint: string,
@@ -49,27 +49,29 @@ export async function getQuote(
             outputMint,
             amount: amount.toString(),
             slippageBps: slippageBps.toString(),
-            onlyDirectRoutes: 'false',
-            asLegacyTransaction: 'false',
         });
+
+        console.log('[Jupiter] Fetching quote via proxy:', { inputMint, outputMint, amount });
 
         const response = await fetch(`${JUPITER_QUOTE_API}?${params}`);
 
         if (!response.ok) {
-            console.error('Quote API error:', response.status);
+            const error = await response.text();
+            console.error('[Jupiter] Quote API error:', response.status, error);
             return null;
         }
 
         const quote = await response.json();
+        console.log('[Jupiter] Quote received:', quote);
         return quote;
     } catch (error) {
-        console.error('Error fetching quote:', error);
+        console.error('[Jupiter] Error fetching quote:', error);
         return null;
     }
 }
 
 /**
- * Execute a swap using Jupiter
+ * Execute a swap using Jupiter (via proxy)
  */
 export async function executeSwap(
     connection: Connection,
@@ -82,7 +84,9 @@ export async function executeSwap(
             return { success: false, error: 'Wallet not connected' };
         }
 
-        // Get swap transaction from Jupiter
+        console.log('[Jupiter] Requesting swap transaction via proxy...');
+
+        // Get swap transaction from Jupiter via proxy
         const swapResponse = await fetch(JUPITER_SWAP_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -97,10 +101,17 @@ export async function executeSwap(
 
         if (!swapResponse.ok) {
             const error = await swapResponse.text();
+            console.error('[Jupiter] Swap API error:', error);
             return { success: false, error: `Swap API error: ${error}` };
         }
 
-        const { swapTransaction } = await swapResponse.json();
+        const { swapTransaction, error: swapError } = await swapResponse.json();
+
+        if (swapError) {
+            return { success: false, error: swapError };
+        }
+
+        console.log('[Jupiter] Got swap transaction, signing...');
 
         // Deserialize the transaction
         const swapTransactionBuf = Buffer.from(swapTransaction, 'base64');
@@ -112,12 +123,16 @@ export async function executeSwap(
         // Sign the transaction
         const signedTransaction = await wallet.signTransaction(transaction);
 
+        console.log('[Jupiter] Transaction signed, sending...');
+
         // Send the transaction
         const rawTransaction = signedTransaction.serialize();
         const signature = await connection.sendRawTransaction(rawTransaction, {
             skipPreflight: true,
             maxRetries: 3,
         });
+
+        console.log('[Jupiter] Transaction sent:', signature);
 
         // Confirm the transaction
         const confirmation = await connection.confirmTransaction({
@@ -127,8 +142,11 @@ export async function executeSwap(
         }, 'confirmed');
 
         if (confirmation.value.err) {
+            console.error('[Jupiter] Transaction failed:', confirmation.value.err);
             return { success: false, error: 'Transaction failed', signature };
         }
+
+        console.log('[Jupiter] Transaction confirmed!');
 
         return {
             success: true,
@@ -137,7 +155,7 @@ export async function executeSwap(
             outputAmount: quote.outAmount,
         };
     } catch (error: any) {
-        console.error('Swap execution error:', error);
+        console.error('[Jupiter] Swap execution error:', error);
         return { success: false, error: error.message || 'Unknown error' };
     }
 }

@@ -3,8 +3,8 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getTokenPrices, TOKENS } from './jupiter';
 
-// Token metadata from Jupiter
-const JUPITER_TOKEN_LIST = 'https://token.jup.ag/strict';
+// Use proxy API route for token list
+const JUPITER_TOKEN_PROXY = '/api/jupiter/tokens';
 
 export interface TokenInfo {
     address: string;
@@ -30,22 +30,30 @@ let tokenMetadataCache: Map<string, TokenInfo> = new Map();
 let tokenListLoaded = false;
 
 /**
- * Load the Jupiter token list for metadata
+ * Load the Jupiter token list for metadata (via proxy)
  */
 export async function loadTokenList(): Promise<void> {
     if (tokenListLoaded) return;
 
     try {
-        const response = await fetch(JUPITER_TOKEN_LIST);
+        console.log('[Tokens] Loading token list via proxy...');
+        const response = await fetch(`${JUPITER_TOKEN_PROXY}?strict=true`);
+
+        if (!response.ok) {
+            console.error('[Tokens] Failed to load token list:', response.status);
+            return;
+        }
+
         const tokens: TokenInfo[] = await response.json();
 
         for (const token of tokens) {
             tokenMetadataCache.set(token.address, token);
         }
 
+        console.log('[Tokens] Token list loaded:', tokens.length, 'tokens');
         tokenListLoaded = true;
     } catch (error) {
-        console.error('Error loading token list:', error);
+        console.error('[Tokens] Error loading token list:', error);
     }
 }
 
@@ -122,7 +130,7 @@ export async function getTokenHoldings(
 
         return holdings;
     } catch (error) {
-        console.error('Error fetching token holdings:', error);
+        console.error('[Tokens] Error fetching token holdings:', error);
         return [];
     }
 }
@@ -148,7 +156,7 @@ export async function getSolBalance(
             usdValue: balance * solPrice,
         };
     } catch (error) {
-        console.error('Error fetching SOL balance:', error);
+        console.error('[Tokens] Error fetching SOL balance:', error);
         return { balance: 0, usdValue: 0 };
     }
 }
@@ -174,13 +182,13 @@ export async function getPortfolioValue(
             tokens: tokenTotal,
         };
     } catch (error) {
-        console.error('Error calculating portfolio value:', error);
+        console.error('[Tokens] Error calculating portfolio value:', error);
         return { total: 0, sol: 0, tokens: 0 };
     }
 }
 
 /**
- * Search for a token by address and get its info
+ * Search for a token by address and get its info (via proxy)
  */
 export async function searchToken(mintAddress: string): Promise<TokenInfo | null> {
     try {
@@ -190,17 +198,21 @@ export async function searchToken(mintAddress: string): Promise<TokenInfo | null
         const cached = tokenMetadataCache.get(mintAddress);
         if (cached) return cached;
 
-        // Try to fetch from Jupiter API
-        const response = await fetch(`https://tokens.jup.ag/token/${mintAddress}`);
+        console.log('[Tokens] Searching for token via proxy:', mintAddress);
+
+        // Try to fetch from Jupiter API via proxy
+        const response = await fetch(`${JUPITER_TOKEN_PROXY}?address=${mintAddress}`);
         if (response.ok) {
             const token = await response.json();
-            tokenMetadataCache.set(mintAddress, token);
-            return token;
+            if (token && !token.error) {
+                tokenMetadataCache.set(mintAddress, token);
+                return token;
+            }
         }
 
         return null;
     } catch (error) {
-        console.error('Error searching token:', error);
+        console.error('[Tokens] Error searching token:', error);
         return null;
     }
 }
