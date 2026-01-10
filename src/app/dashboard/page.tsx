@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { useConnection } from '@solana/wallet-adapter-react';
 import Link from 'next/link';
 import {
     Wallet,
@@ -22,10 +23,15 @@ import {
     Search,
     ArrowUpDown,
     XOctagon,
+    Loader2,
+    CheckCircle,
+    AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
-import { getTokenAccounts, fetchTokenPrice } from '@/lib/solana/connection';
+import { getQuote, executeSwap, TOKENS, solToLamports, formatTokenAmount } from '@/lib/solana/jupiter';
+import { getTokenPriceData, getTokenSafetyCheck } from '@/lib/api/dexscreener';
+import { searchToken } from '@/lib/solana/tokens';
 import {
     AreaChart,
     Area,
@@ -53,14 +59,120 @@ const takeProfitPresets = [
     { label: '200%', value: 200 },
 ];
 
-// Quick Trade Modal
+// Quick Trade Modal with Real Jupiter Integration
 function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-    const { connected } = useWallet();
+    const wallet = useWallet();
+    const { connection } = useConnection();
     const { setVisible } = useWalletModal();
+    const { balance } = useAppStore();
+
     const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
     const [tokenAddress, setTokenAddress] = useState('');
     const [amount, setAmount] = useState('');
     const [slippage, setSlippage] = useState(1);
+
+    // Trading states
+    const [loading, setLoading] = useState(false);
+    const [fetchingQuote, setFetchingQuote] = useState(false);
+    const [quote, setQuote] = useState<any>(null);
+    const [tokenInfo, setTokenInfo] = useState<any>(null);
+    const [safetyWarnings, setSafetyWarnings] = useState<string[]>([]);
+    const [txStatus, setTxStatus] = useState<'idle' | 'signing' | 'confirming' | 'success' | 'error'>('idle');
+    const [txSignature, setTxSignature] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    // Fetch token info when address changes
+    useEffect(() => {
+        const fetchTokenInfo = async () => {
+            if (tokenAddress.length !== 44) {
+                setTokenInfo(null);
+                setSafetyWarnings([]);
+                return;
+            }
+
+            try {
+                const [token, priceData, safety] = await Promise.all([
+                    searchToken(tokenAddress),
+                    getTokenPriceData(tokenAddress),
+                    getTokenSafetyCheck(tokenAddress),
+                ]);
+
+                setTokenInfo({ ...token, ...priceData });
+                setSafetyWarnings(safety.warnings);
+            } catch (err) {
+                console.error('Error fetching token:', err);
+            }
+        };
+
+        fetchTokenInfo();
+    }, [tokenAddress]);
+
+    // Fetch quote when amount or token changes
+    useEffect(() => {
+        const fetchQuoteData = async () => {
+            if (!tokenAddress || !amount || parseFloat(amount) <= 0) {
+                setQuote(null);
+                return;
+            }
+
+            setFetchingQuote(true);
+            try {
+                const amountInLamports = solToLamports(parseFloat(amount));
+                const inputMint = tradeType === 'buy' ? TOKENS.SOL : tokenAddress;
+                const outputMint = tradeType === 'buy' ? tokenAddress : TOKENS.SOL;
+
+                const quoteData = await getQuote(
+                    inputMint,
+                    outputMint,
+                    amountInLamports,
+                    slippage * 100 // Convert to basis points
+                );
+
+                setQuote(quoteData);
+            } catch (err) {
+                console.error('Error fetching quote:', err);
+            } finally {
+                setFetchingQuote(false);
+            }
+        };
+
+        const debounce = setTimeout(fetchQuoteData, 500);
+        return () => clearTimeout(debounce);
+    }, [tokenAddress, amount, tradeType, slippage]);
+
+    // Execute trade
+    const handleTrade = async () => {
+        if (!wallet.connected || !quote) return;
+
+        setLoading(true);
+        setError(null);
+        setTxStatus('signing');
+
+        try {
+            setTxStatus('confirming');
+            const result = await executeSwap(connection, wallet, quote);
+
+            if (result.success) {
+                setTxStatus('success');
+                setTxSignature(result.signature || null);
+
+                // Clear form after success
+                setTimeout(() => {
+                    setAmount('');
+                    setQuote(null);
+                    setTxStatus('idle');
+                }, 3000);
+            } else {
+                setTxStatus('error');
+                setError(result.error || 'Transaction failed');
+            }
+        } catch (err: any) {
+            setTxStatus('error');
+            setError(err.message || 'Unknown error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -93,7 +205,7 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                         </button>
                     </div>
 
-                    {!connected ? (
+                    {!wallet.connected ? (
                         <div className="text-center py-4">
                             <Wallet className="w-12 h-12 mx-auto mb-2 text-muted-foreground" />
                             <h4 className="font-semibold mb-1">Connect Your Wallet</h4>
@@ -106,8 +218,34 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                                 Connect Wallet
                             </button>
                         </div>
+                    ) : txStatus === 'success' ? (
+                        <div className="text-center py-6">
+                            <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+                                <CheckCircle className="w-8 h-8 text-emerald-500" />
+                            </div>
+                            <h4 className="text-lg font-semibold mb-2">Trade Successful!</h4>
+                            {txSignature && (
+                                <a
+                                    href={`https://solscan.io/tx/${txSignature}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-primary hover:underline flex items-center justify-center gap-1"
+                                >
+                                    View on Solscan
+                                    <ExternalLink className="w-3 h-3" />
+                                </a>
+                            )}
+                        </div>
                     ) : (
                         <div className="space-y-2">
+                            {/* Balance Display */}
+                            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                                <span>Available: {balance.toFixed(4)} SOL</span>
+                                {tokenInfo?.price && (
+                                    <span>{tokenInfo.symbol}: ${tokenInfo.price.toFixed(6)}</span>
+                                )}
+                            </div>
+
                             {/* Trade Type Toggle */}
                             <div className="flex gap-2 p-1 bg-muted rounded-lg">
                                 <button
@@ -147,7 +285,26 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                                         className="input-field pl-8 w-full text-sm py-2"
                                     />
                                 </div>
+                                {tokenInfo && (
+                                    <div className="flex items-center gap-2 mt-1 text-xs">
+                                        <span className="text-foreground font-medium">{tokenInfo.symbol}</span>
+                                        <span className="text-muted-foreground">{tokenInfo.name}</span>
+                                    </div>
+                                )}
                             </div>
+
+                            {/* Safety Warnings */}
+                            {safetyWarnings.length > 0 && (
+                                <div className="p-2 rounded bg-amber-500/10 border border-amber-500/20">
+                                    <div className="flex items-center gap-2 text-amber-500 text-xs font-medium mb-1">
+                                        <AlertTriangle className="w-3 h-3" />
+                                        Safety Warnings
+                                    </div>
+                                    {safetyWarnings.map((warning, i) => (
+                                        <div key={i} className="text-xs text-amber-400">{warning}</div>
+                                    ))}
+                                </div>
+                            )}
 
                             {/* Amount */}
                             <div>
@@ -162,6 +319,30 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                                     className="input-field w-full text-sm py-2"
                                 />
                             </div>
+
+                            {/* Quote Display */}
+                            {fetchingQuote && (
+                                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-2">
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    Fetching quote...
+                                </div>
+                            )}
+                            {quote && !fetchingQuote && (
+                                <div className="p-2 rounded bg-muted/50 text-xs">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">You'll receive:</span>
+                                        <span className="font-medium">
+                                            ~{formatTokenAmount(quote.outAmount, tradeType === 'buy' ? (tokenInfo?.decimals || 9) : 9).toFixed(6)}
+                                            {tradeType === 'buy' ? ` ${tokenInfo?.symbol || 'tokens'}` : ' SOL'}
+                                        </span>
+                                    </div>
+                                    {quote.priceImpactPct && parseFloat(quote.priceImpactPct) > 1 && (
+                                        <div className="text-amber-400 mt-1">
+                                            ⚠️ Price impact: {parseFloat(quote.priceImpactPct).toFixed(2)}%
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Slippage */}
                             <div>
@@ -190,17 +371,35 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                                 <span className="text-xs text-violet-400">Jito Bundle protection</span>
                             </div>
 
+                            {/* Error Display */}
+                            {error && (
+                                <div className="p-2 rounded bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+                                    {error}
+                                </div>
+                            )}
+
                             {/* Execute Button */}
                             <button
+                                onClick={handleTrade}
+                                disabled={loading || !quote || !tokenAddress}
                                 className={cn(
-                                    'w-full py-2.5 rounded-lg font-semibold transition-all text-sm',
+                                    'w-full py-2.5 rounded-lg font-semibold transition-all text-sm flex items-center justify-center gap-2',
                                     tradeType === 'buy'
-                                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                                        : 'bg-red-500 hover:bg-red-600 text-white'
+                                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white disabled:bg-emerald-500/50'
+                                        : 'bg-red-500 hover:bg-red-600 text-white disabled:bg-red-500/50'
                                 )}
                             >
-                                <ArrowUpDown className="w-4 h-4 mr-2 inline" />
-                                {tradeType === 'buy' ? 'Buy Token' : 'Sell Token'}
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        {txStatus === 'signing' ? 'Sign in wallet...' : 'Confirming...'}
+                                    </>
+                                ) : (
+                                    <>
+                                        <ArrowUpDown className="w-4 h-4" />
+                                        {tradeType === 'buy' ? 'Buy Token' : 'Sell Token'}
+                                    </>
+                                )}
                             </button>
 
                             <p className="text-xs text-center text-muted-foreground">

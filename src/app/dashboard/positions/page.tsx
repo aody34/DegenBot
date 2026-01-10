@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { useConnection } from '@solana/wallet-adapter-react';
 import {
     Search,
     Filter,
@@ -18,10 +19,12 @@ import {
     Wallet,
     RefreshCw,
     Trash2,
+    Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
-import { getTokenAccounts, fetchTokenPrice } from '@/lib/solana/connection';
+import { getTokenHoldings, TokenHolding } from '@/lib/solana/tokens';
+import { getTokenPriceData } from '@/lib/api/dexscreener';
 
 // Demo positions (used when not connected)
 const demoPositions = [
@@ -274,6 +277,7 @@ function SetTPModal({
 
 export default function PositionsPage() {
     const { connected, publicKey } = useWallet();
+    const { connection } = useConnection();
     const { setVisible } = useWalletModal();
     const [importModalOpen, setImportModalOpen] = useState(false);
     const [tpModalOpen, setTPModalOpen] = useState(false);
@@ -281,19 +285,66 @@ export default function PositionsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState('all');
 
-    const positions = demoPositions;
+    // Real token data states
+    const [holdings, setHoldings] = useState<TokenHolding[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+
+    // Fetch real token holdings
+    const fetchHoldings = useCallback(async () => {
+        if (!connected || !publicKey) {
+            setHoldings([]);
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const tokenHoldings = await getTokenHoldings(connection, publicKey.toBase58());
+            setHoldings(tokenHoldings);
+            setLastRefresh(new Date());
+        } catch (error) {
+            console.error('Error fetching holdings:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [connected, publicKey, connection]);
+
+    // Fetch on mount and when wallet connects
+    useEffect(() => {
+        fetchHoldings();
+    }, [fetchHoldings]);
+
+    // Transform holdings to position format
+    const positions = connected && holdings.length > 0
+        ? holdings.map(h => ({
+            token: h.symbol,
+            symbol: `${h.symbol}/SOL`,
+            mint: h.mint,
+            amount: h.balance.toLocaleString(),
+            value: h.usdValue,
+            entryPrice: 0, // Would need to track this
+            currentPrice: h.price,
+            pnl: 0, // Would need entry price to calculate
+            pnlValue: 0,
+            takeProfitSet: false,
+            targetPrice: null,
+            targetPnl: null,
+            status: 'neutral' as const,
+            logoURI: h.logoURI,
+        }))
+        : demoPositions;
 
     const filteredPositions = positions.filter(p => {
         const matchesSearch = p.token.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesFilter = filter === 'all' ||
-            (filter === 'profitable' && p.pnl >= 0) ||
-            (filter === 'loss' && p.pnl < 0) ||
+            (filter === 'profitable' && (p.pnl || 0) >= 0) ||
+            (filter === 'loss' && (p.pnl || 0) < 0) ||
             (filter === 'tp-set' && p.takeProfitSet);
         return matchesSearch && matchesFilter;
     });
 
-    const totalValue = positions.reduce((sum, p) => sum + p.value, 0);
-    const totalPnl = positions.reduce((sum, p) => sum + p.pnlValue, 0);
+    const totalValue = positions.reduce((sum, p) => sum + (p.value || 0), 0);
+    const totalPnl = positions.reduce((sum, p) => sum + (p.pnlValue || 0), 0);
     const positionsWithTP = positions.filter(p => p.takeProfitSet).length;
 
     const handleSetTP = (position: any) => {
