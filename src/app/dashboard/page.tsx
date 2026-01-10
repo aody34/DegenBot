@@ -557,12 +557,109 @@ function SetTakeProfitModal({
     );
 }
 
+// Kill Switch Modal - Emergency Sell All Positions
+function KillSwitchModal({
+    isOpen,
+    onClose,
+    onConfirm
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+}) {
+    const [confirming, setConfirming] = useState(false);
+
+    const handleConfirm = async () => {
+        setConfirming(true);
+        await onConfirm();
+        setConfirming(false);
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+                onClick={onClose}
+            />
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm px-4"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="glass rounded-2xl p-6 border border-red-500/30">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                            <XOctagon className="w-6 h-6 text-red-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-red-400">Kill Switch</h3>
+                            <p className="text-sm text-muted-foreground">Emergency sell all</p>
+                        </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 mb-4">
+                        <p className="text-sm text-red-300">
+                            ⚠️ This will <strong>immediately sell ALL your token positions</strong> for SOL using market orders.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2 mb-4 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Slippage:</span>
+                            <span>5% (high for speed)</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Protection:</span>
+                            <span className="text-violet-400">Jito Bundle Enabled</span>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                        <button
+                            onClick={onClose}
+                            className="flex-1 btn-outline"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirm}
+                            disabled={confirming}
+                            className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 px-4 rounded-lg font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {confirming ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Selling...
+                                </>
+                            ) : (
+                                <>
+                                    <XOctagon className="w-4 h-4" />
+                                    Confirm Sell All
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        </AnimatePresence>
+    );
+}
+
 export default function DashboardPage() {
     const { connected, publicKey } = useWallet();
     const { setVisible } = useWalletModal();
     const { balance, positions, setPositions } = useAppStore();
     const [quickTradeOpen, setQuickTradeOpen] = useState(false);
     const [takeProfitModalOpen, setTakeProfitModalOpen] = useState(false);
+    const [killSwitchOpen, setKillSwitchOpen] = useState(false);
     const [selectedPosition, setSelectedPosition] = useState<any>(null);
     const [selectedPreset, setSelectedPreset] = useState(50);
     const [slippage, setSlippage] = useState(1);
@@ -664,6 +761,17 @@ export default function DashboardPage() {
                 position={selectedPosition}
             />
 
+            {/* Kill Switch Modal */}
+            <KillSwitchModal
+                isOpen={killSwitchOpen}
+                onClose={() => setKillSwitchOpen(false)}
+                onConfirm={async () => {
+                    // TODO: Implement actual sell-all logic
+                    console.log('[DegenBot] Kill Switch activated - selling all positions');
+                    alert('Kill Switch activated! In production, this would sell all positions.');
+                }}
+            />
+
             {/* Welcome Banner */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -692,7 +800,10 @@ export default function DashboardPage() {
                                     <Zap className="w-4 h-4 mr-2" />
                                     Quick Trade
                                 </button>
-                                <button className="btn-outline text-red-400 border-red-400/20 hover:bg-red-500/10">
+                                <button
+                                    onClick={() => setKillSwitchOpen(true)}
+                                    className="btn-outline text-red-400 border-red-400/20 hover:bg-red-500/10"
+                                >
                                     <XOctagon className="w-4 h-4 mr-2" />
                                     Kill Switch
                                 </button>

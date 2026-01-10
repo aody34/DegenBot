@@ -361,10 +361,17 @@ export default function DashboardLayout({
                         </h1>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button className="p-2 rounded-lg hover:bg-muted transition-colors relative">
+                        <Link
+                            href="/dashboard/settings"
+                            className="p-2 rounded-lg hover:bg-muted transition-colors relative group"
+                            title="Notifications"
+                        >
                             <Bell className="w-5 h-5" />
                             <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
-                        </button>
+                            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-card text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-border">
+                                Notifications
+                            </span>
+                        </Link>
                         <WalletButton />
                     </div>
                 </header>
