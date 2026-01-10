@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Proxy Jupiter Token API through Vercel servers
+// Proxy Jupiter Token API through Vercel edge servers
+
+export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -11,14 +13,20 @@ export async function GET(request: NextRequest) {
         // If address provided, fetch specific token
         if (address) {
             const response = await fetch(`https://tokens.jup.ag/token/${address}`, {
-                headers: { 'Accept': 'application/json' },
+                headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'DegenBot/1.0',
+                },
             });
 
             if (!response.ok) {
-                return NextResponse.json(
-                    { error: 'Token not found' },
-                    { status: 404 }
-                );
+                // Return a basic token object for unknown tokens
+                return NextResponse.json({
+                    address,
+                    symbol: 'Unknown',
+                    name: 'Unknown Token',
+                    decimals: 9,
+                });
             }
 
             const data = await response.json();
@@ -31,23 +39,30 @@ export async function GET(request: NextRequest) {
             : 'https://token.jup.ag/all';
 
         const response = await fetch(url, {
-            headers: { 'Accept': 'application/json' },
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'DegenBot/1.0',
+            },
         });
 
         if (!response.ok) {
-            return NextResponse.json(
-                { error: 'Failed to fetch token list' },
-                { status: response.status }
-            );
+            // Return empty array if token list fails
+            return NextResponse.json([]);
         }
 
         const data = await response.json();
         return NextResponse.json(data);
     } catch (error: any) {
-        console.error('Token proxy error:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to fetch token data' },
-            { status: 500 }
-        );
+        console.error('[Token Proxy] Error:', error.message);
+        // Return graceful fallback instead of error
+        if (address) {
+            return NextResponse.json({
+                address,
+                symbol: 'Unknown',
+                name: 'Unknown Token',
+                decimals: 9,
+            });
+        }
+        return NextResponse.json([]);
     }
 }

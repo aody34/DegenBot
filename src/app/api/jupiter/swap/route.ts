@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Proxy Jupiter Swap API through Vercel servers
+// Proxy Jupiter Swap API through Vercel edge servers
+
+export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
     try {
@@ -10,6 +12,7 @@ export async function POST(request: NextRequest) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'User-Agent': 'DegenBot/1.0',
             },
             body: JSON.stringify(body),
         });
@@ -25,7 +28,7 @@ export async function POST(request: NextRequest) {
         const data = await response.json();
         return NextResponse.json(data);
     } catch (error: any) {
-        console.error('Swap proxy error:', error);
+        console.error('[Swap Proxy] Error:', error.message);
         return NextResponse.json(
             { error: error.message || 'Failed to create swap transaction' },
             { status: 500 }

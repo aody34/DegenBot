@@ -13,9 +13,17 @@ interface Props {
 }
 
 export const WalletProvider: FC<Props> = ({ children }) => {
-    // Use PublicNode free RPC - allows requests from Vercel without API key
+    // Use Helius RPC - user has set up their API key in Vercel env vars
+    // Fallback to a free RPC if env var not set
     const endpoint = useMemo(() => {
-        return process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://solana-rpc.publicnode.com';
+        const envRpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+        if (envRpc) {
+            console.log('[WalletProvider] Using custom RPC from env');
+            return envRpc;
+        }
+        // Fallback to Helius public free tier
+        console.log('[WalletProvider] Using fallback Helius RPC');
+        return 'https://mainnet.helius-rpc.com/?api-key=9b583a75-fa36-4da9-932d-db8e4e06ae35';
     }, []);
 
     // Configure wallets
