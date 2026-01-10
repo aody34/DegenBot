@@ -110,7 +110,10 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     // Fetch quote when amount or token changes
     useEffect(() => {
         const fetchQuoteData = async () => {
+            console.log('[QuickTrade] Checking quote params:', { tokenAddress, amount, tradeType });
+
             if (!tokenAddress || !amount || parseFloat(amount) <= 0) {
+                console.log('[QuickTrade] Missing params, clearing quote');
                 setQuote(null);
                 return;
             }
@@ -121,6 +124,8 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 const inputMint = tradeType === 'buy' ? TOKENS.SOL : tokenAddress;
                 const outputMint = tradeType === 'buy' ? tokenAddress : TOKENS.SOL;
 
+                console.log('[QuickTrade] Fetching quote:', { inputMint, outputMint, amountInLamports });
+
                 const quoteData = await getQuote(
                     inputMint,
                     outputMint,
@@ -128,9 +133,10 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                     slippage * 100 // Convert to basis points
                 );
 
+                console.log('[QuickTrade] Quote result:', quoteData);
                 setQuote(quoteData);
             } catch (err) {
-                console.error('Error fetching quote:', err);
+                console.error('[QuickTrade] Error fetching quote:', err);
             } finally {
                 setFetchingQuote(false);
             }
@@ -142,15 +148,30 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 
     // Execute trade
     const handleTrade = async () => {
-        if (!wallet.connected || !quote) return;
+        console.log('[QuickTrade] handleTrade called:', { connected: wallet.connected, hasQuote: !!quote });
+
+        if (!wallet.connected) {
+            console.log('[QuickTrade] Wallet not connected');
+            setError('Please connect your wallet first');
+            return;
+        }
+
+        if (!quote) {
+            console.log('[QuickTrade] No quote available');
+            setError('Please wait for quote to load');
+            return;
+        }
 
         setLoading(true);
         setError(null);
         setTxStatus('signing');
 
         try {
+            console.log('[QuickTrade] Executing swap with quote:', quote);
             setTxStatus('confirming');
             const result = await executeSwap(connection, wallet, quote);
+
+            console.log('[QuickTrade] Swap result:', result);
 
             if (result.success) {
                 setTxStatus('success');
@@ -167,6 +188,7 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 setError(result.error || 'Transaction failed');
             }
         } catch (err: any) {
+            console.error('[QuickTrade] Trade error:', err);
             setTxStatus('error');
             setError(err.message || 'Unknown error');
         } finally {
