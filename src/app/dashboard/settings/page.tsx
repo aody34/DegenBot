@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import {
     Settings,
     User,
@@ -18,9 +20,14 @@ import {
     Key,
     Smartphone,
     MessageSquare,
-    Mail
+    Mail,
+    LogOut,
+    Copy,
+    Check,
+    ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAppStore } from '@/lib/store';
 
 const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -30,7 +37,11 @@ const tabs = [
 ];
 
 export default function SettingsPage() {
+    const { connected, publicKey, disconnect } = useWallet();
+    const { setVisible } = useWalletModal();
+    const { balance, setConnected } = useAppStore();
     const [activeTab, setActiveTab] = useState('general');
+    const [copied, setCopied] = useState(false);
     const [settings, setSettings] = useState({
         darkMode: true,
         defaultSlippage: 1.0,
@@ -44,6 +55,23 @@ export default function SettingsPage() {
 
     const toggleSetting = (key: keyof typeof settings) => {
         setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const handleCopy = async () => {
+        if (publicKey) {
+            await navigator.clipboard.writeText(publicKey.toBase58());
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    const handleDisconnect = () => {
+        disconnect();
+        setConnected(false);
+    };
+
+    const shortenAddress = (address: string) => {
+        return `${address.slice(0, 6)}...${address.slice(-4)}`;
     };
 
     return (
@@ -91,24 +119,70 @@ export default function SettingsPage() {
                         <div className="space-y-6">
                             <h2 className="text-lg font-semibold">General Settings</h2>
 
-                            {/* Profile */}
+                            {/* Wallet Connection Status */}
                             <div className="space-y-4">
-                                <h3 className="text-sm font-medium text-muted-foreground">Profile</h3>
-                                <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30">
-                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                                        <User className="w-8 h-8 text-white" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="font-semibold">Connected Wallet</div>
-                                        <div className="text-sm text-muted-foreground font-mono">
-                                            Not connected
+                                <h3 className="text-sm font-medium text-muted-foreground">Wallet</h3>
+                                {connected && publicKey ? (
+                                    <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                                                    <Wallet className="w-6 h-6 text-white" />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                        <span className="text-emerald-400 font-medium">Connected</span>
+                                                    </div>
+                                                    <div className="text-sm text-muted-foreground font-mono flex items-center gap-2">
+                                                        {shortenAddress(publicKey.toBase58())}
+                                                        <button onClick={handleCopy} className="hover:text-foreground transition-colors">
+                                                            {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                                        </button>
+                                                        <a
+                                                            href={`https://solscan.io/account/${publicKey.toBase58()}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="hover:text-foreground transition-colors"
+                                                        >
+                                                            <ExternalLink className="w-3 h-3" />
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-2xl font-bold">{balance.toFixed(4)} SOL</div>
+                                                <div className="text-sm text-muted-foreground">Balance</div>
+                                            </div>
                                         </div>
+                                        <button
+                                            onClick={handleDisconnect}
+                                            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors font-medium"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            Disconnect Wallet
+                                        </button>
                                     </div>
-                                    <button className="btn-primary py-2 px-4 text-sm">
-                                        <Wallet className="w-4 h-4 mr-2" />
-                                        Connect
-                                    </button>
-                                </div>
+                                ) : (
+                                    <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30">
+                                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                                            <User className="w-8 h-8 text-white" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="font-semibold">Wallet Not Connected</div>
+                                            <div className="text-sm text-muted-foreground">
+                                                Connect your wallet to access all features
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setVisible(true)}
+                                            className="btn-primary py-2 px-4 text-sm"
+                                        >
+                                            <Wallet className="w-4 h-4 mr-2" />
+                                            Connect
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Appearance */}
@@ -291,8 +365,18 @@ export default function SettingsPage() {
                                 <p className="text-sm text-muted-foreground mb-4">
                                     Disconnect your wallet and clear all local data.
                                 </p>
-                                <button className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors text-sm font-medium">
-                                    Disconnect Wallet
+                                <button
+                                    onClick={handleDisconnect}
+                                    disabled={!connected}
+                                    className={cn(
+                                        "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                                        connected
+                                            ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                                            : "bg-muted text-muted-foreground cursor-not-allowed"
+                                    )}
+                                >
+                                    <LogOut className="w-4 h-4 inline mr-2" />
+                                    {connected ? 'Disconnect Wallet' : 'No Wallet Connected'}
                                 </button>
                             </div>
                         </div>

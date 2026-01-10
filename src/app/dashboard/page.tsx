@@ -77,9 +77,10 @@ function QuickTradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md"
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md px-4"
+                onClick={(e) => e.stopPropagation()}
             >
-                <div className="glass rounded-2xl p-6 border border-primary/20">
+                <div className="glass rounded-2xl p-6 border border-primary/20 max-h-[90vh] overflow-y-auto">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
