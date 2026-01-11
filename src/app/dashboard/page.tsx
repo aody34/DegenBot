@@ -32,6 +32,7 @@ import { useAppStore } from '@/lib/store';
 import { getQuote, executeSwap, TOKENS, solToLamports, formatTokenAmount } from '@/lib/solana/jupiter';
 import { getTokenPriceData, getTokenSafetyCheck } from '@/lib/api/dexscreener';
 import { searchToken } from '@/lib/solana/tokens';
+import JupiterTerminal from '@/components/JupiterTerminal';
 import {
     AreaChart,
     Area,
@@ -680,6 +681,7 @@ export default function DashboardPage() {
     const { setVisible } = useWalletModal();
     const { balance, positions, setPositions } = useAppStore();
     const [quickTradeOpen, setQuickTradeOpen] = useState(false);
+    const [jupiterTerminalOpen, setJupiterTerminalOpen] = useState(false);
     const [takeProfitModalOpen, setTakeProfitModalOpen] = useState(false);
     const [killSwitchOpen, setKillSwitchOpen] = useState(false);
     const [selectedPosition, setSelectedPosition] = useState<any>(null);
@@ -794,6 +796,12 @@ export default function DashboardPage() {
                 }}
             />
 
+            {/* Jupiter Terminal (Official Swap Widget) */}
+            <JupiterTerminal
+                isOpen={jupiterTerminalOpen}
+                onClose={() => setJupiterTerminalOpen(false)}
+            />
+
             {/* Welcome Banner */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -821,6 +829,13 @@ export default function DashboardPage() {
                                 >
                                     <Zap className="w-4 h-4 mr-2" />
                                     Quick Trade
+                                </button>
+                                <button
+                                    onClick={() => setJupiterTerminalOpen(true)}
+                                    className="btn-outline border-violet-400/20 text-violet-400 hover:bg-violet-500/10"
+                                >
+                                    <ArrowUpDown className="w-4 h-4 mr-2" />
+                                    Jupiter Swap
                                 </button>
                                 <button
                                     onClick={() => setKillSwitchOpen(true)}
