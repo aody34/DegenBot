@@ -92,6 +92,31 @@ export interface Database {
                     status?: 'pending' | 'completed' | 'failed';
                 };
             };
+            subscriptions: {
+                Row: {
+                    id: string;
+                    user_id: string;
+                    tier: 'free' | 'pro' | 'whale';
+                    payment_tx: string | null;
+                    started_at: string;
+                    expires_at: string | null;
+                    is_active: boolean;
+                    trades_used: number;
+                };
+                Insert: {
+                    user_id: string;
+                    tier?: 'free' | 'pro' | 'whale';
+                    payment_tx?: string;
+                    expires_at?: string;
+                };
+                Update: {
+                    tier?: 'free' | 'pro' | 'whale';
+                    payment_tx?: string;
+                    expires_at?: string;
+                    is_active?: boolean;
+                    trades_used?: number;
+                };
+            };
         };
     };
 }

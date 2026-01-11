@@ -397,6 +397,18 @@ export default function LandingPage() {
                                 <span className="text-xs text-emerald-400 font-medium">Mainnet: Live</span>
                             </div>
                             <Link
+                                href="/auth/login"
+                                className="hidden md:inline-flex text-sm text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                Login
+                            </Link>
+                            <Link
+                                href="/auth/signup"
+                                className="hidden md:inline-flex btn-outline text-sm"
+                            >
+                                Sign Up
+                            </Link>
+                            <Link
                                 href="/dashboard"
                                 className="btn-primary text-sm flex items-center gap-2"
                             >
