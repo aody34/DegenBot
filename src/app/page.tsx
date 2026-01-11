@@ -152,44 +152,44 @@ const pricingPlans = [
         period: 'forever',
         description: 'Perfect for getting started',
         features: [
-            '3 active take-profit rules',
+            '5 trades per month',
             'Basic price alerts',
-            'Public RPC nodes',
+            'DexScreener integration',
             'Community support',
         ],
-        cta: 'Start Trading',
-        popular: true,
-        available: true,
-    },
-    {
-        name: 'Pro',
-        price: '1%',
-        period: 'on successful automated trades',
-        description: 'For serious traders',
-        features: [
-            'Unlimited take-profit rules',
-            'Jito Bundle protection',
-            'Private Helius RPC',
-            'Kill Switch feature',
-            'Priority support',
-            'No monthly fees',
-        ],
-        cta: 'Upgrade to Pro',
+        cta: 'Start Free',
         popular: false,
         available: true,
     },
     {
+        name: 'Pro',
+        price: '3 SOL',
+        period: 'per month',
+        description: 'For active traders',
+        features: [
+            'Unlimited trades',
+            'Jito MEV protection',
+            'Private Helius RPC',
+            'Kill Switch feature',
+            'Advanced take-profit',
+            'Email support',
+        ],
+        cta: 'Upgrade to Pro',
+        popular: true,
+        available: true,
+    },
+    {
         name: 'Whale',
-        price: '$99',
+        price: '5 SOL',
         period: 'per month',
         description: 'Maximum performance',
         features: [
             'Everything in Pro',
             'Dedicated RPC endpoint',
-            '0.5% trade fee',
-            'Custom slippage profiles',
             'API access',
-            '24/7 priority support',
+            'Custom alerts',
+            'Priority support',
+            'Early feature access',
         ],
         cta: 'Go Whale',
         popular: false,
@@ -398,22 +398,15 @@ export default function LandingPage() {
                             </div>
                             <Link
                                 href="/auth/login"
-                                className="hidden md:inline-flex text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                             >
                                 Login
                             </Link>
                             <Link
                                 href="/auth/signup"
-                                className="hidden md:inline-flex btn-outline text-sm"
+                                className="btn-primary text-sm"
                             >
-                                Sign Up
-                            </Link>
-                            <Link
-                                href="/dashboard"
-                                className="btn-primary text-sm flex items-center gap-2"
-                            >
-                                <Terminal className="w-4 h-4" />
-                                Launch Terminal
+                                Sign Up Free
                             </Link>
                         </div>
                     </div>
@@ -920,7 +913,7 @@ export default function LandingPage() {
                                     ))}
                                 </ul>
                                 <Link
-                                    href="/dashboard"
+                                    href="/auth/signup"
                                     className={`block w-full py-3 rounded-lg font-semibold transition-all text-center ${plan.popular
                                         ? 'bg-primary text-primary-foreground hover:opacity-90'
                                         : 'border border-border hover:bg-muted'
@@ -969,8 +962,8 @@ export default function LandingPage() {
                                 View on GitHub
                                 <ExternalLink className="w-4 h-4 ml-2" />
                             </a>
-                            <Link href="/dashboard" className="btn-outline">
-                                Launch Terminal
+                            <Link href="/auth/signup" className="btn-outline">
+                                Get Started
                                 <ArrowRight className="w-4 h-4 ml-2" />
                             </Link>
                         </div>
@@ -993,12 +986,12 @@ export default function LandingPage() {
                             <p className="text-xl text-muted-foreground mb-8 max-w-xl mx-auto">
                                 Stop losing money to failed Raydium sells. Land every trade with Jito protection.
                             </p>
-                            <Link href="/dashboard" className="btn-primary text-lg px-10 py-4 inline-flex items-center gap-2">
-                                <Terminal className="w-5 h-5" />
-                                Launch Trading Terminal
+                            <Link href="/auth/signup" className="btn-primary text-lg px-10 py-4 inline-flex items-center gap-2">
+                                <Rocket className="w-5 h-5" />
+                                Start Trading Free
                             </Link>
                             <p className="mt-4 text-sm text-muted-foreground">
-                                Free to use. 1% fee only on successful automated trades.
+                                Sign up free. Upgrade anytime for unlimited trades.
                             </p>
                         </div>
                     </motion.div>
