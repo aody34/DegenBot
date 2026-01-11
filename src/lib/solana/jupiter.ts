@@ -2,9 +2,9 @@
 
 import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js';
 
-// Use proxy API routes to bypass network restrictions
-const JUPITER_QUOTE_API = '/api/jupiter/quote';
-const JUPITER_SWAP_API = '/api/jupiter/swap';
+// Jupiter API endpoints - call directly from client
+const JUPITER_QUOTE_API = 'https://quote-api.jup.ag/v6/quote';
+const JUPITER_SWAP_API = 'https://quote-api.jup.ag/v6/swap';
 const JUPITER_PRICE_API = 'https://price.jup.ag/v6/price';
 
 // Common token addresses
@@ -35,13 +35,13 @@ export interface SwapResult {
 }
 
 /**
- * Get a swap quote from Jupiter (via proxy)
+ * Get a swap quote from Jupiter (direct call)
  */
 export async function getQuote(
     inputMint: string,
     outputMint: string,
-    amount: number, // in lamports or smallest unit
-    slippageBps: number = 100 // 1% default
+    amount: number,
+    slippageBps: number = 100
 ): Promise<QuoteResponse | null> {
     try {
         const params = new URLSearchParams({
@@ -49,11 +49,17 @@ export async function getQuote(
             outputMint,
             amount: amount.toString(),
             slippageBps: slippageBps.toString(),
+            onlyDirectRoutes: 'false',
+            asLegacyTransaction: 'false',
         });
 
-        console.log('[Jupiter] Fetching quote via proxy:', { inputMint, outputMint, amount });
+        const url = `${JUPITER_QUOTE_API}?${params}`;
+        console.log('[Jupiter] Fetching quote directly:', url);
 
-        const response = await fetch(`${JUPITER_QUOTE_API}?${params}`);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+        });
 
         if (!response.ok) {
             const error = await response.text();
@@ -62,7 +68,7 @@ export async function getQuote(
         }
 
         const quote = await response.json();
-        console.log('[Jupiter] Quote received:', quote);
+        console.log('[Jupiter] Quote received:', quote.outAmount ? 'success' : 'empty');
         return quote;
     } catch (error) {
         console.error('[Jupiter] Error fetching quote:', error);
@@ -71,22 +77,21 @@ export async function getQuote(
 }
 
 /**
- * Execute a swap using Jupiter (via proxy)
+ * Execute a swap using Jupiter (direct call)
  */
 export async function executeSwap(
     connection: Connection,
-    wallet: any, // WalletContextState from @solana/wallet-adapter-react
+    wallet: any,
     quote: QuoteResponse,
-    priorityFeeLamports: number = 100000 // 0.0001 SOL default priority fee
+    priorityFeeLamports: number = 100000
 ): Promise<SwapResult> {
     try {
         if (!wallet.publicKey || !wallet.signTransaction) {
             return { success: false, error: 'Wallet not connected' };
         }
 
-        console.log('[Jupiter] Requesting swap transaction via proxy...');
+        console.log('[Jupiter] Requesting swap transaction...');
 
-        // Get swap transaction from Jupiter via proxy
         const swapResponse = await fetch(JUPITER_SWAP_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -113,19 +118,14 @@ export async function executeSwap(
 
         console.log('[Jupiter] Got swap transaction, signing...');
 
-        // Deserialize the transaction
         const swapTransactionBuf = Buffer.from(swapTransaction, 'base64');
         const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
 
-        // Get latest blockhash
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-
-        // Sign the transaction
         const signedTransaction = await wallet.signTransaction(transaction);
 
         console.log('[Jupiter] Transaction signed, sending...');
 
-        // Send the transaction
         const rawTransaction = signedTransaction.serialize();
         const signature = await connection.sendRawTransaction(rawTransaction, {
             skipPreflight: true,
@@ -134,7 +134,6 @@ export async function executeSwap(
 
         console.log('[Jupiter] Transaction sent:', signature);
 
-        // Confirm the transaction
         const confirmation = await connection.confirmTransaction({
             signature,
             blockhash,
@@ -166,15 +165,11 @@ export async function executeSwap(
 export async function getTokenPrice(tokenMint: string): Promise<number | null> {
     try {
         const response = await fetch(`${JUPITER_PRICE_API}?ids=${tokenMint}`);
-
-        if (!response.ok) {
-            return null;
-        }
-
+        if (!response.ok) return null;
         const data = await response.json();
         return data.data?.[tokenMint]?.price || null;
     } catch (error) {
-        console.error('Error fetching price:', error);
+        console.error('[Jupiter] Error fetching price:', error);
         return null;
     }
 }
@@ -186,10 +181,7 @@ export async function getTokenPrices(tokenMints: string[]): Promise<Record<strin
     try {
         const ids = tokenMints.join(',');
         const response = await fetch(`${JUPITER_PRICE_API}?ids=${ids}`);
-
-        if (!response.ok) {
-            return {};
-        }
+        if (!response.ok) return {};
 
         const data = await response.json();
         const prices: Record<string, number> = {};
@@ -199,31 +191,21 @@ export async function getTokenPrices(tokenMints: string[]): Promise<Record<strin
                 prices[mint] = data.data[mint].price;
             }
         }
-
         return prices;
     } catch (error) {
-        console.error('Error fetching prices:', error);
+        console.error('[Jupiter] Error fetching prices:', error);
         return {};
     }
 }
 
-/**
- * Convert SOL to lamports
- */
 export function solToLamports(sol: number): number {
     return Math.floor(sol * 1_000_000_000);
 }
 
-/**
- * Convert lamports to SOL
- */
 export function lamportsToSol(lamports: number): number {
     return lamports / 1_000_000_000;
 }
 
-/**
- * Format token amount based on decimals
- */
 export function formatTokenAmount(amount: string | number, decimals: number): number {
     const amountNum = typeof amount === 'string' ? parseInt(amount) : amount;
     return amountNum / Math.pow(10, decimals);

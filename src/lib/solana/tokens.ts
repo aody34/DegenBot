@@ -3,8 +3,9 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getTokenPrices, TOKENS } from './jupiter';
 
-// Use proxy API route for token list
-const JUPITER_TOKEN_PROXY = '/api/jupiter/tokens';
+// Jupiter token API - call directly
+const JUPITER_TOKEN_API = 'https://tokens.jup.ag/token';
+const JUPITER_TOKEN_LIST = 'https://token.jup.ag/strict';
 
 export interface TokenInfo {
     address: string;
@@ -30,14 +31,14 @@ let tokenMetadataCache: Map<string, TokenInfo> = new Map();
 let tokenListLoaded = false;
 
 /**
- * Load the Jupiter token list for metadata (via proxy)
+ * Load the Jupiter token list for metadata
  */
 export async function loadTokenList(): Promise<void> {
     if (tokenListLoaded) return;
 
     try {
-        console.log('[Tokens] Loading token list via proxy...');
-        const response = await fetch(`${JUPITER_TOKEN_PROXY}?strict=true`);
+        console.log('[Tokens] Loading token list directly...');
+        const response = await fetch(JUPITER_TOKEN_LIST);
 
         if (!response.ok) {
             console.error('[Tokens] Failed to load token list:', response.status);
@@ -72,12 +73,10 @@ export async function getTokenHoldings(
     walletAddress: string
 ): Promise<TokenHolding[]> {
     try {
-        // Ensure token list is loaded
         await loadTokenList();
 
         const publicKey = new PublicKey(walletAddress);
 
-        // Get all token accounts
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
             publicKey,
             { programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') }
@@ -86,7 +85,6 @@ export async function getTokenHoldings(
         const holdings: TokenHolding[] = [];
         const mintAddresses: string[] = [];
 
-        // Parse token accounts
         for (const account of tokenAccounts.value) {
             const parsed = account.account.data.parsed;
             const info = parsed.info;
@@ -94,10 +92,8 @@ export async function getTokenHoldings(
             const balance = info.tokenAmount.uiAmount;
             const decimals = info.tokenAmount.decimals;
 
-            // Skip zero balances
             if (balance === 0) continue;
 
-            // Get token metadata
             const metadata = getTokenMetadata(mint);
 
             holdings.push({
@@ -107,14 +103,13 @@ export async function getTokenHoldings(
                 logoURI: metadata?.logoURI,
                 balance,
                 decimals,
-                usdValue: 0, // Will be updated
-                price: 0, // Will be updated
+                usdValue: 0,
+                price: 0,
             });
 
             mintAddresses.push(mint);
         }
 
-        // Fetch prices for all tokens
         if (mintAddresses.length > 0) {
             const prices = await getTokenPrices(mintAddresses);
 
@@ -125,7 +120,6 @@ export async function getTokenHoldings(
             }
         }
 
-        // Sort by USD value descending
         holdings.sort((a, b) => b.usdValue - a.usdValue);
 
         return holdings;
@@ -147,7 +141,6 @@ export async function getSolBalance(
         const lamports = await connection.getBalance(publicKey);
         const balance = lamports / 1_000_000_000;
 
-        // Get SOL price
         const prices = await getTokenPrices([TOKENS.SOL]);
         const solPrice = prices[TOKENS.SOL] || 0;
 
@@ -188,20 +181,18 @@ export async function getPortfolioValue(
 }
 
 /**
- * Search for a token by address and get its info (via proxy)
+ * Search for a token by address and get its info
  */
 export async function searchToken(mintAddress: string): Promise<TokenInfo | null> {
     try {
         await loadTokenList();
 
-        // Check cache first
         const cached = tokenMetadataCache.get(mintAddress);
         if (cached) return cached;
 
-        console.log('[Tokens] Searching for token via proxy:', mintAddress);
+        console.log('[Tokens] Searching for token:', mintAddress);
 
-        // Try to fetch from Jupiter API via proxy
-        const response = await fetch(`${JUPITER_TOKEN_PROXY}?address=${mintAddress}`);
+        const response = await fetch(`${JUPITER_TOKEN_API}/${mintAddress}`);
         if (response.ok) {
             const token = await response.json();
             if (token && !token.error) {
