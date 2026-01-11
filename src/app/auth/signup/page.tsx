@@ -53,10 +53,17 @@ export default function SignupPage() {
 
             if (data.user) {
                 // Create subscription record (free tier)
-                await supabase.from('subscriptions').insert({
-                    user_id: data.user.id,
-                    tier: 'free',
-                });
+                // Note: We don't await this - subscription creation is best-effort
+                // The user can still use the app even if this fails
+                try {
+                    await supabase.from('subscriptions').insert({
+                        user_id: data.user.id,
+                        tier: 'free',
+                    } as any);
+                } catch (subscriptionError) {
+                    console.error('Failed to create subscription:', subscriptionError);
+                    // Don't block signup if subscription creation fails
+                }
 
                 setSuccess(true);
             }

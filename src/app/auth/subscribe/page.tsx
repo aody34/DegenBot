@@ -122,7 +122,7 @@ export default function SubscribePage() {
                 .single();
 
             if (subscription) {
-                setCurrentTier(subscription.tier);
+                setCurrentTier((subscription as any).tier);
             }
 
             setLoading(false);
@@ -185,7 +185,7 @@ export default function SubscribePage() {
                     expires_at: expiresAt.toISOString(),
                     is_active: true,
                     trades_used: 0,
-                });
+                } as any);
 
             if (dbError) throw dbError;
 
@@ -339,10 +339,10 @@ export default function SubscribePage() {
                                     onClick={() => handleUpgrade(tier)}
                                     disabled={isCurrentTier || processing !== null || !isUpgrade}
                                     className={`w-full py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${isCurrentTier
-                                            ? 'bg-emerald-500/20 text-emerald-400 cursor-default'
-                                            : isUpgrade
-                                                ? 'btn-primary'
-                                                : 'bg-muted text-muted-foreground cursor-not-allowed'
+                                        ? 'bg-emerald-500/20 text-emerald-400 cursor-default'
+                                        : isUpgrade
+                                            ? 'btn-primary'
+                                            : 'bg-muted text-muted-foreground cursor-not-allowed'
                                         }`}
                                 >
                                     {processing === tier.id ? (
