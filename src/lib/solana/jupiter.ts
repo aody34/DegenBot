@@ -2,9 +2,10 @@
 
 import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js';
 
-// Jupiter API endpoints - call directly from client
-const JUPITER_QUOTE_API = 'https://quote-api.jup.ag/v6/quote';
-const JUPITER_SWAP_API = 'https://quote-api.jup.ag/v6/swap';
+// Use Vercel rewrites to proxy Jupiter API (configured in next.config.js)
+// This routes requests through Vercel's servers
+const JUPITER_QUOTE_API = '/jupiter-api/v6/quote';
+const JUPITER_SWAP_API = '/jupiter-api/v6/swap';
 const JUPITER_PRICE_API = 'https://price.jup.ag/v6/price';
 
 // Common token addresses
@@ -35,7 +36,7 @@ export interface SwapResult {
 }
 
 /**
- * Get a swap quote from Jupiter (direct call)
+ * Get a swap quote from Jupiter (via Vercel rewrite)
  */
 export async function getQuote(
     inputMint: string,
@@ -54,12 +55,14 @@ export async function getQuote(
         });
 
         const url = `${JUPITER_QUOTE_API}?${params}`;
-        console.log('[Jupiter] Fetching quote directly:', url);
+        console.log('[Jupiter] Fetching quote via rewrite:', url);
 
         const response = await fetch(url, {
             method: 'GET',
             headers: { 'Accept': 'application/json' },
         });
+
+        console.log('[Jupiter] Response status:', response.status);
 
         if (!response.ok) {
             const error = await response.text();
@@ -68,7 +71,7 @@ export async function getQuote(
         }
 
         const quote = await response.json();
-        console.log('[Jupiter] Quote received:', quote.outAmount ? 'success' : 'empty');
+        console.log('[Jupiter] Quote received, outAmount:', quote.outAmount);
         return quote;
     } catch (error) {
         console.error('[Jupiter] Error fetching quote:', error);
@@ -77,7 +80,7 @@ export async function getQuote(
 }
 
 /**
- * Execute a swap using Jupiter (direct call)
+ * Execute a swap using Jupiter (via Vercel rewrite)
  */
 export async function executeSwap(
     connection: Connection,

@@ -3,9 +3,9 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { getTokenPrices, TOKENS } from './jupiter';
 
-// Jupiter token API - call directly
-const JUPITER_TOKEN_API = 'https://tokens.jup.ag/token';
-const JUPITER_TOKEN_LIST = 'https://token.jup.ag/strict';
+// Use Vercel rewrites to proxy Jupiter Token API
+const JUPITER_TOKEN_API = '/jupiter-tokens/token';
+const JUPITER_TOKEN_LIST = '/jupiter-token-list';
 
 export interface TokenInfo {
     address: string;
@@ -31,14 +31,16 @@ let tokenMetadataCache: Map<string, TokenInfo> = new Map();
 let tokenListLoaded = false;
 
 /**
- * Load the Jupiter token list for metadata
+ * Load the Jupiter token list for metadata (via Vercel rewrite)
  */
 export async function loadTokenList(): Promise<void> {
     if (tokenListLoaded) return;
 
     try {
-        console.log('[Tokens] Loading token list directly...');
+        console.log('[Tokens] Loading token list via rewrite...');
         const response = await fetch(JUPITER_TOKEN_LIST);
+
+        console.log('[Tokens] Token list response:', response.status);
 
         if (!response.ok) {
             console.error('[Tokens] Failed to load token list:', response.status);
@@ -181,7 +183,7 @@ export async function getPortfolioValue(
 }
 
 /**
- * Search for a token by address and get its info
+ * Search for a token by address and get its info (via Vercel rewrite)
  */
 export async function searchToken(mintAddress: string): Promise<TokenInfo | null> {
     try {
@@ -193,6 +195,8 @@ export async function searchToken(mintAddress: string): Promise<TokenInfo | null
         console.log('[Tokens] Searching for token:', mintAddress);
 
         const response = await fetch(`${JUPITER_TOKEN_API}/${mintAddress}`);
+        console.log('[Tokens] Token search response:', response.status);
+
         if (response.ok) {
             const token = await response.json();
             if (token && !token.error) {
