@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Proxy Jupiter Token API through Vercel edge servers
-
-export const runtime = 'edge';
+// Proxy Jupiter Token API through Vercel servers
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -12,12 +10,14 @@ export async function GET(request: NextRequest) {
     try {
         // If address provided, fetch specific token
         if (address) {
+            console.log('[Token Proxy] Fetching token:', address);
+
             const response = await fetch(`https://tokens.jup.ag/token/${address}`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'User-Agent': 'DegenBot/1.0',
-                },
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store',
             });
+
+            console.log('[Token Proxy] Token response:', response.status);
 
             if (!response.ok) {
                 // Return a basic token object for unknown tokens
@@ -38,19 +38,23 @@ export async function GET(request: NextRequest) {
             ? 'https://token.jup.ag/strict'
             : 'https://token.jup.ag/all';
 
+        console.log('[Token Proxy] Fetching token list:', url);
+
         const response = await fetch(url, {
-            headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'DegenBot/1.0',
-            },
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store',
         });
+
+        console.log('[Token Proxy] Token list response:', response.status);
 
         if (!response.ok) {
             // Return empty array if token list fails
+            console.log('[Token Proxy] Token list failed, returning empty');
             return NextResponse.json([]);
         }
 
         const data = await response.json();
+        console.log('[Token Proxy] Token list loaded:', data.length, 'tokens');
         return NextResponse.json(data);
     } catch (error: any) {
         console.error('[Token Proxy] Error:', error.message);
@@ -66,3 +70,5 @@ export async function GET(request: NextRequest) {
         return NextResponse.json([]);
     }
 }
+
+export const dynamic = 'force-dynamic';
