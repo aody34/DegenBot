@@ -824,18 +824,11 @@ export default function DashboardPage() {
                         {connected ? (
                             <>
                                 <button
-                                    onClick={() => setQuickTradeOpen(true)}
+                                    onClick={() => setJupiterTerminalOpen(true)}
                                     className="btn-primary"
                                 >
                                     <Zap className="w-4 h-4 mr-2" />
                                     Quick Trade
-                                </button>
-                                <button
-                                    onClick={() => setJupiterTerminalOpen(true)}
-                                    className="btn-outline border-violet-400/20 text-violet-400 hover:bg-violet-500/10"
-                                >
-                                    <ArrowUpDown className="w-4 h-4 mr-2" />
-                                    Jupiter Swap
                                 </button>
                                 <button
                                     onClick={() => setKillSwitchOpen(true)}
