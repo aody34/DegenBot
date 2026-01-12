@@ -147,6 +147,7 @@ const comparisonData = [
 
 const pricingPlans = [
     {
+        planId: 'free',
         name: 'Free',
         price: '$0',
         period: 'forever',
@@ -162,6 +163,7 @@ const pricingPlans = [
         available: true,
     },
     {
+        planId: 'pro',
         name: 'Pro',
         price: '3 SOL',
         period: 'per month',
@@ -179,6 +181,7 @@ const pricingPlans = [
         available: true,
     },
     {
+        planId: 'whale',
         name: 'Whale',
         price: '5 SOL',
         period: 'per month',
@@ -913,7 +916,7 @@ export default function LandingPage() {
                                     ))}
                                 </ul>
                                 <Link
-                                    href="/auth/signup"
+                                    href={`/auth/signup?plan=${plan.planId}`}
                                     className={`block w-full py-3 rounded-lg font-semibold transition-all text-center ${plan.popular
                                         ? 'bg-primary text-primary-foreground hover:opacity-90'
                                         : 'border border-border hover:bg-muted'

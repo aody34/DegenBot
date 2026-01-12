@@ -1,20 +1,61 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, Loader2, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowLeft, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { createBrowserClient } from '@/lib/supabase/client';
 
-export default function SignupPage() {
+// Password validation
+function validatePassword(password: string): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (password.length < 8) {
+        errors.push('At least 8 characters');
+    }
+    if (!/[A-Z]/.test(password)) {
+        errors.push('One uppercase letter');
+    }
+    if (!/[a-z]/.test(password)) {
+        errors.push('One lowercase letter');
+    }
+    if (!/[0-9]/.test(password)) {
+        errors.push('One number');
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        errors.push('One special character (!@#$%^&*)');
+    }
+
+    return {
+        valid: errors.length === 0,
+        errors,
+    };
+}
+
+function SignupForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const plan = searchParams.get('plan') || 'free';
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+
+    // Validate password on change
+    useEffect(() => {
+        if (password.length > 0) {
+            const { errors } = validatePassword(password);
+            setPasswordErrors(errors);
+        } else {
+            setPasswordErrors([]);
+        }
+    }, [password]);
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,8 +69,10 @@ export default function SignupPage() {
             return;
         }
 
-        if (password.length < 6) {
-            setError('Password must be at least 6 characters');
+        // Validate strong password
+        const { valid, errors } = validatePassword(password);
+        if (!valid) {
+            setError('Password must include: ' + errors.join(', '));
             setLoading(false);
             return;
         }
@@ -42,19 +85,22 @@ export default function SignupPage() {
                 email,
                 password,
                 options: {
-                    emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    emailRedirectTo: `${window.location.origin}/auth/callback${plan !== 'free' ? `?plan=${plan}` : ''}`,
                 },
             });
 
             if (authError) {
-                setError(authError.message);
+                // Handle specific error messages
+                if (authError.message.includes('already registered')) {
+                    setError('This email is already registered. Please login instead.');
+                } else {
+                    setError(authError.message);
+                }
                 return;
             }
 
             if (data.user) {
-                // Create subscription record (free tier)
-                // Note: We don't await this - subscription creation is best-effort
-                // The user can still use the app even if this fails
+                // Create subscription record (free tier initially)
                 try {
                     await supabase.from('subscriptions').insert({
                         user_id: data.user.id,
@@ -62,17 +108,33 @@ export default function SignupPage() {
                     } as any);
                 } catch (subscriptionError) {
                     console.error('Failed to create subscription:', subscriptionError);
-                    // Don't block signup if subscription creation fails
                 }
 
                 setSuccess(true);
             }
         } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred');
+            if (err.message?.includes('supabase') || err.message?.includes('environment')) {
+                setError('Service temporarily unavailable. Please try again later.');
+            } else {
+                setError(err.message || 'An unexpected error occurred');
+            }
         } finally {
             setLoading(false);
         }
     };
+
+    const getPlanDisplay = () => {
+        switch (plan) {
+            case 'pro':
+                return { name: 'Pro', price: '3 SOL/month' };
+            case 'whale':
+                return { name: 'Whale', price: '5 SOL/month' };
+            default:
+                return { name: 'Free', price: '5 trades/month' };
+        }
+    };
+
+    const planInfo = getPlanDisplay();
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -100,11 +162,24 @@ export default function SignupPage() {
                 {/* Signup Card */}
                 <div className="glass rounded-2xl p-8">
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold mb-2">Create Account</h1>
+                        <h1 className="text-3xl font-bold mb-2">Sign Up</h1>
                         <p className="text-muted-foreground">
-                            Start trading with DegenBot for free
+                            Create your DegenBot account
                         </p>
                     </div>
+
+                    {/* Plan Badge */}
+                    {plan !== 'free' && (
+                        <div className="mb-6 p-4 rounded-xl bg-violet-500/10 border border-violet-500/20">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-semibold text-violet-400">{planInfo.name} Plan</p>
+                                    <p className="text-sm text-muted-foreground">{planInfo.price}</p>
+                                </div>
+                                <p className="text-xs text-muted-foreground">Payment after signup</p>
+                            </div>
+                        </div>
+                    )}
 
                     {success ? (
                         <motion.div
@@ -119,6 +194,11 @@ export default function SignupPage() {
                             <p className="text-muted-foreground mb-6">
                                 We've sent a confirmation link to <span className="text-foreground">{email}</span>
                             </p>
+                            {plan !== 'free' && (
+                                <p className="text-sm text-violet-400 mb-4">
+                                    After confirming, you'll be directed to complete your {planInfo.name} subscription payment.
+                                </p>
+                            )}
                             <Link
                                 href="/auth/login"
                                 className="btn-primary px-6 py-3 inline-block"
@@ -127,7 +207,7 @@ export default function SignupPage() {
                             </Link>
                         </motion.div>
                     ) : (
-                        <form onSubmit={handleSignup} className="space-y-6">
+                        <form onSubmit={handleSignup} className="space-y-5">
                             {/* Email Field */}
                             <div>
                                 <label className="block text-sm font-medium mb-2">
@@ -154,15 +234,40 @@ export default function SignupPage() {
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                                     <input
-                                        type="password"
+                                        type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="••••••••"
                                         required
-                                        minLength={6}
-                                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                        className="w-full pl-10 pr-12 py-3 rounded-xl bg-card border border-border focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    >
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
                                 </div>
+                                {/* Password Requirements */}
+                                {password.length > 0 && passwordErrors.length > 0 && (
+                                    <div className="mt-2 text-xs text-muted-foreground">
+                                        <p className="mb-1">Password needs:</p>
+                                        <ul className="space-y-0.5">
+                                            {passwordErrors.map((err, i) => (
+                                                <li key={i} className="flex items-center gap-1 text-amber-400">
+                                                    <span>•</span> {err}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                {password.length > 0 && passwordErrors.length === 0 && (
+                                    <div className="mt-2 flex items-center gap-1 text-xs text-emerald-400">
+                                        <CheckCircle className="w-3 h-3" />
+                                        Strong password
+                                    </div>
+                                )}
                             </div>
 
                             {/* Confirm Password Field */}
@@ -173,38 +278,42 @@ export default function SignupPage() {
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                                     <input
-                                        type="password"
+                                        type={showPassword ? 'text' : 'password'}
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         placeholder="••••••••"
                                         required
-                                        minLength={6}
                                         className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
                                     />
                                 </div>
+                                {confirmPassword.length > 0 && password !== confirmPassword && (
+                                    <p className="mt-2 text-xs text-red-400">Passwords do not match</p>
+                                )}
                             </div>
 
                             {/* Free Plan Badge */}
-                            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-emerald-400">Free Plan</p>
-                                        <p className="text-sm text-muted-foreground">5 free trades included</p>
+                            {plan === 'free' && (
+                                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                                            <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-emerald-400">Free Plan</p>
+                                            <p className="text-sm text-muted-foreground">5 trades included</p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Error Message */}
                             {error && (
                                 <motion.div
                                     initial={{ opacity: 0, y: -10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="flex items-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400"
+                                    className="flex items-start gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400"
                                 >
-                                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                                     <span className="text-sm">{error}</span>
                                 </motion.div>
                             )}
@@ -212,7 +321,7 @@ export default function SignupPage() {
                             {/* Submit Button */}
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={loading || passwordErrors.length > 0}
                                 className="w-full btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-50"
                             >
                                 {loading ? (
@@ -221,7 +330,7 @@ export default function SignupPage() {
                                         Creating account...
                                     </>
                                 ) : (
-                                    'Create Free Account'
+                                    'Create Account'
                                 )}
                             </button>
                         </form>
@@ -249,5 +358,17 @@ export default function SignupPage() {
                 </p>
             </motion.div>
         </div>
+    );
+}
+
+export default function SignupPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        }>
+            <SignupForm />
+        </Suspense>
     );
 }
