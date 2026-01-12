@@ -9,6 +9,7 @@ import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { useConnection } from '@solana/wallet-adapter-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
+import { SubscriptionProvider, useSubscription } from '@/lib/subscription/context';
 import {
     LayoutDashboard,
     Briefcase,
@@ -25,6 +26,7 @@ import {
     Copy,
     Check,
     ExternalLink,
+    AlertTriangle,
 } from 'lucide-react';
 
 const navItems = [
@@ -176,6 +178,51 @@ function WalletButton() {
                 )}
             </AnimatePresence>
         </div>
+    );
+}
+
+// Trade Limit Banner for Free users
+function TradeLimitBanner() {
+    const { subscription, loading } = useSubscription();
+
+    if (loading || !subscription) return null;
+    if (subscription.tier !== 'free') return null;
+
+    const tradesRemaining = subscription.tradesRemaining;
+    const trialEnded = tradesRemaining <= 0;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn(
+                'mx-6 mt-4 p-4 rounded-xl border flex items-center gap-3',
+                trialEnded
+                    ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                    : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+            )}
+        >
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <div className="flex-1">
+                {trialEnded ? (
+                    <>
+                        <p className="font-semibold">Free Trial Ended</p>
+                        <p className="text-sm text-muted-foreground">You've used all 5 free trades. Upgrade to Pro for unlimited trading.</p>
+                    </>
+                ) : (
+                    <>
+                        <p className="font-semibold">Free Plan: {tradesRemaining} trades remaining</p>
+                        <p className="text-sm text-muted-foreground">Upgrade to Pro for unlimited trades.</p>
+                    </>
+                )}
+            </div>
+            <Link
+                href="/auth/subscribe"
+                className="btn-primary text-sm px-4 py-2 flex-shrink-0"
+            >
+                Upgrade
+            </Link>
+        </motion.div>
     );
 }
 
@@ -376,8 +423,14 @@ export default function DashboardLayout({
                     </div>
                 </header>
 
-                {/* Page Content */}
-                <div className="p-6">{children}</div>
+                {/* Subscription Provider for trade limit checks */}
+                <SubscriptionProvider>
+                    {/* Trade Limit Banner for Free users */}
+                    <TradeLimitBanner />
+
+                    {/* Page Content */}
+                    <div className="p-6">{children}</div>
+                </SubscriptionProvider>
             </main>
         </div>
     );

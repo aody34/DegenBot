@@ -51,29 +51,35 @@ function LoginForm() {
             }
 
             if (data.user) {
-                // If user came from Pro/Whale pricing, check their subscription
-                if (plan === 'pro' || plan === 'whale') {
-                    // Get their current subscription
-                    const { data: subscription } = await supabase
-                        .from('subscriptions')
-                        .select('tier')
-                        .eq('user_id', data.user.id)
-                        .single();
+                // Get user's subscription
+                const { data: subscription } = await supabase
+                    .from('subscriptions')
+                    .select('tier, is_active')
+                    .eq('user_id', data.user.id)
+                    .single();
 
-                    const currentTier = (subscription as any)?.tier || 'free';
+                const userTier = (subscription as any)?.tier || 'free';
+                const isActive = (subscription as any)?.is_active ?? true;
 
-                    // Check if they need to upgrade
-                    if (currentTier === 'free' ||
-                        (plan === 'whale' && currentTier === 'pro')) {
-                        // They need to upgrade - redirect to subscribe page
-                        setUpgradeRequired(true);
-                        setTimeout(() => {
-                            router.push('/auth/subscribe');
-                        }, 2000);
-                        return;
-                    }
+                // CASE 1: User came from Pro/Whale button but registered as Free
+                if ((plan === 'pro' || plan === 'whale') && userTier === 'free') {
+                    setError(`Your account is registered as Free. You cannot access ${plan === 'whale' ? 'Whale' : 'Pro'} features. Please create a new account for ${plan === 'whale' ? 'Whale' : 'Pro'}.`);
+                    // Sign out the user
+                    await supabase.auth.signOut();
+                    return;
                 }
 
+                // CASE 2: User is Pro/Whale but hasn't paid yet (is_active = false)
+                if ((userTier === 'pro' || userTier === 'whale') && !isActive) {
+                    setUpgradeRequired(true);
+                    setTimeout(() => {
+                        router.push('/auth/subscribe');
+                    }, 2000);
+                    return;
+                }
+
+                // CASE 3: User is Free and subscription is active - go to dashboard
+                // CASE 4: User is Pro/Whale and has paid (is_active = true) - go to dashboard
                 setSuccess(true);
                 setTimeout(() => {
                     router.push('/dashboard');

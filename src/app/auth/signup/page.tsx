@@ -100,11 +100,14 @@ function SignupForm() {
             }
 
             if (data.user) {
-                // Create subscription record (free tier initially)
+                // Create subscription record with the selected plan
+                // Free plans are active immediately, Pro/Whale need payment first
                 try {
                     await supabase.from('subscriptions').insert({
                         user_id: data.user.id,
-                        tier: 'free',
+                        tier: plan, // Store the actual plan they signed up for
+                        is_active: plan === 'free', // Free = active, Pro/Whale = inactive until paid
+                        trades_used: 0,
                     } as any);
                 } catch (subscriptionError) {
                     console.error('Failed to create subscription:', subscriptionError);
