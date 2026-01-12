@@ -1,24 +1,42 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Loader2, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, ArrowLeft, AlertCircle, CheckCircle, Crown, Rocket } from 'lucide-react';
 import { createBrowserClient } from '@/lib/supabase/client';
 
-export default function LoginPage() {
+function LoginForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const plan = searchParams.get('plan');
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [upgradeRequired, setUpgradeRequired] = useState(false);
+
+    const getPlanDisplay = () => {
+        switch (plan) {
+            case 'pro':
+                return { name: 'Pro', price: '3 SOL/month', icon: Rocket, color: 'violet' };
+            case 'whale':
+                return { name: 'Whale', price: '5 SOL/month', icon: Crown, color: 'amber' };
+            default:
+                return null;
+        }
+    };
+
+    const planInfo = getPlanDisplay();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setUpgradeRequired(false);
 
         try {
             const supabase = createBrowserClient();
@@ -33,8 +51,30 @@ export default function LoginPage() {
             }
 
             if (data.user) {
+                // If user came from Pro/Whale pricing, check their subscription
+                if (plan === 'pro' || plan === 'whale') {
+                    // Get their current subscription
+                    const { data: subscription } = await supabase
+                        .from('subscriptions')
+                        .select('tier')
+                        .eq('user_id', data.user.id)
+                        .single();
+
+                    const currentTier = (subscription as any)?.tier || 'free';
+
+                    // Check if they need to upgrade
+                    if (currentTier === 'free' ||
+                        (plan === 'whale' && currentTier === 'pro')) {
+                        // They need to upgrade - redirect to subscribe page
+                        setUpgradeRequired(true);
+                        setTimeout(() => {
+                            router.push('/auth/subscribe');
+                        }, 2000);
+                        return;
+                    }
+                }
+
                 setSuccess(true);
-                // Redirect to dashboard after successful login
                 setTimeout(() => {
                     router.push('/dashboard');
                 }, 1000);
@@ -77,6 +117,21 @@ export default function LoginPage() {
                             Sign in to access your DegenBot dashboard
                         </p>
                     </div>
+
+                    {/* Plan Badge (if coming from Pro/Whale) */}
+                    {planInfo && (
+                        <div className={`mb-6 p-4 rounded-xl bg-${planInfo.color}-500/10 border border-${planInfo.color}-500/20`}>
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg bg-${planInfo.color}-500/20 flex items-center justify-center`}>
+                                    <planInfo.icon className={`w-5 h-5 text-${planInfo.color}-500`} />
+                                </div>
+                                <div>
+                                    <p className={`font-medium text-${planInfo.color}-400`}>Upgrade to {planInfo.name}</p>
+                                    <p className="text-sm text-muted-foreground">{planInfo.price}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <form onSubmit={handleLogin} className="space-y-6">
                         {/* Email Field */}
@@ -128,6 +183,23 @@ export default function LoginPage() {
                             </motion.div>
                         )}
 
+                        {/* Upgrade Required Message */}
+                        {upgradeRequired && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex flex-col gap-2 p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Rocket className="w-5 h-5 flex-shrink-0" />
+                                    <span className="font-semibold">Upgrade Required</span>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Your current plan doesn't include {plan === 'whale' ? 'Whale' : 'Pro'} features. Redirecting to upgrade...
+                                </p>
+                            </motion.div>
+                        )}
+
                         {/* Success Message */}
                         {success && (
                             <motion.div
@@ -143,7 +215,7 @@ export default function LoginPage() {
                         {/* Submit Button */}
                         <button
                             type="submit"
-                            disabled={loading || success}
+                            disabled={loading || success || upgradeRequired}
                             className="w-full btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {loading ? (
@@ -156,6 +228,11 @@ export default function LoginPage() {
                                     <CheckCircle className="w-5 h-5" />
                                     Success!
                                 </>
+                            ) : upgradeRequired ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Redirecting to upgrade...
+                                </>
                             ) : (
                                 'Sign In'
                             )}
@@ -167,7 +244,7 @@ export default function LoginPage() {
                         <p className="text-muted-foreground">
                             Don't have an account?{' '}
                             <Link
-                                href="/auth/signup"
+                                href={plan ? `/auth/signup?plan=${plan}` : '/auth/signup'}
                                 className="text-primary hover:underline font-medium"
                             >
                                 Sign up
@@ -182,5 +259,17 @@ export default function LoginPage() {
                 </p>
             </motion.div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        }>
+            <LoginForm />
+        </Suspense>
     );
 }
