@@ -52,7 +52,7 @@ function LoginForm() {
 
             if (data.user) {
                 // Get user's subscription
-                const { data: subscription, error: subError } = await supabase
+                let { data: subscription, error: subError } = await supabase
                     .from('subscriptions')
                     .select('tier, is_active')
                     .eq('user_id', data.user.id)
@@ -62,7 +62,33 @@ function LoginForm() {
                 console.log('[DegenBot] Login - Subscription:', subscription);
                 console.log('[DegenBot] Login - Plan requested:', plan);
 
-                // If no subscription exists, they're free tier by default
+                // If no subscription exists, create one as FREE tier (legacy user)
+                if (!subscription) {
+                    console.log('[DegenBot] No subscription found - creating Free tier record');
+                    const { error: insertError } = await (supabase
+                        .from('subscriptions') as any)
+                        .insert({
+                            user_id: data.user.id,
+                            tier: 'free',
+                            is_active: true,
+                            trades_used: 0,
+                        });
+
+                    if (insertError) {
+                        console.error('[DegenBot] Failed to create subscription:', insertError);
+                    } else {
+                        // Refetch the subscription
+                        const { data: newSub } = await supabase
+                            .from('subscriptions')
+                            .select('tier, is_active')
+                            .eq('user_id', data.user.id)
+                            .single();
+                        subscription = newSub;
+                        console.log('[DegenBot] Created subscription:', subscription);
+                    }
+                }
+
+                // Determine tier and active status
                 const userTier = (subscription as any)?.tier || 'free';
                 const isActive = (subscription as any)?.is_active ?? true;
 
