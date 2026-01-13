@@ -144,6 +144,21 @@ export default function SubscribePage() {
         setSuccess(null);
 
         try {
+            // Check wallet balance first
+            const balance = await connection.getBalance(wallet.publicKey!);
+            const requiredLamports = tier.price * LAMPORTS_PER_SOL;
+            const requiredWithFee = requiredLamports + 10000; // Add 0.00001 SOL for fees
+
+            console.log('[DegenBot] Payment - Balance:', balance / LAMPORTS_PER_SOL, 'SOL');
+            console.log('[DegenBot] Payment - Required:', tier.price, 'SOL');
+
+            if (balance < requiredWithFee) {
+                const needed = (requiredWithFee - balance) / LAMPORTS_PER_SOL;
+                setError(`Insufficient SOL balance. You have ${(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL. You need at least ${tier.price} SOL + gas fees. Please add ${needed.toFixed(4)} more SOL to your wallet.`);
+                setProcessing(null);
+                return;
+            }
+
             // Create SOL transfer transaction
             const paymentWallet = new PublicKey(PAYMENT_WALLET);
             const lamports = tier.price * LAMPORTS_PER_SOL;
@@ -156,20 +171,35 @@ export default function SubscribePage() {
                 })
             );
 
-            // Get recent blockhash
-            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+            // Get fresh blockhash right before sending
+            console.log('[DegenBot] Payment - Getting fresh blockhash...');
+            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
             transaction.recentBlockhash = blockhash;
             transaction.feePayer = wallet.publicKey!;
 
+            console.log('[DegenBot] Payment - Sending transaction...');
             // Sign and send transaction
-            const signature = await wallet.sendTransaction(transaction, connection);
+            const signature = await wallet.sendTransaction(transaction, connection, {
+                skipPreflight: false,
+                preflightCommitment: 'confirmed',
+            });
 
-            // Confirm transaction
-            await connection.confirmTransaction({
+            console.log('[DegenBot] Payment - Transaction sent:', signature);
+
+            // Confirm transaction with longer timeout
+            setSuccess('Transaction sent! Confirming...');
+
+            const confirmation = await connection.confirmTransaction({
                 signature,
                 blockhash,
                 lastValidBlockHeight,
             }, 'confirmed');
+
+            if (confirmation.value.err) {
+                throw new Error('Transaction failed: ' + JSON.stringify(confirmation.value.err));
+            }
+
+            console.log('[DegenBot] Payment - Transaction confirmed!');
 
             // Update subscription in database
             const supabase = createBrowserClient();
@@ -198,8 +228,24 @@ export default function SubscribePage() {
             }, 3000);
 
         } catch (err: any) {
-            console.error('Payment error:', err);
-            setError(err.message || 'Payment failed. Please try again.');
+            console.error('[DegenBot] Payment error:', err);
+
+            // Provide user-friendly error messages
+            let errorMessage = 'Payment failed. Please try again.';
+
+            if (err.message?.includes('block height exceeded') || err.message?.includes('blockhash')) {
+                errorMessage = 'Transaction expired. Please click the button again to retry.';
+            } else if (err.message?.includes('insufficient') || err.message?.includes('0x1')) {
+                errorMessage = 'Insufficient SOL balance. Please add more SOL to your wallet.';
+            } else if (err.message?.includes('User rejected')) {
+                errorMessage = 'Transaction was cancelled.';
+            } else if (err.message?.includes('blocked')) {
+                errorMessage = 'Phantom blocked the request. Click "Proceed anyway" in Phantom to continue.';
+            } else if (err.message) {
+                errorMessage = err.message;
+            }
+
+            setError(errorMessage);
         } finally {
             setProcessing(null);
         }
