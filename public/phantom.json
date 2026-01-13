@@ -1,0 +1,10 @@
+{
+    "name": "DegenBot",
+    "description": "Auto Take-Profit Bot for Solana trading",
+    "url": "https://degenbot.dev",
+    "iconUrl": "https://degenbot.dev/icon.png",
+    "additionalInfo": {
+        "is_safe": true,
+        "contact": "support@degenbot.dev"
+    }
+}

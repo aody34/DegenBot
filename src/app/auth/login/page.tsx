@@ -52,20 +52,29 @@ function LoginForm() {
 
             if (data.user) {
                 // Get user's subscription
-                const { data: subscription } = await supabase
+                const { data: subscription, error: subError } = await supabase
                     .from('subscriptions')
                     .select('tier, is_active')
                     .eq('user_id', data.user.id)
                     .single();
 
+                console.log('[DegenBot] Login - User:', data.user.email);
+                console.log('[DegenBot] Login - Subscription:', subscription);
+                console.log('[DegenBot] Login - Plan requested:', plan);
+
+                // If no subscription exists, they're free tier by default
                 const userTier = (subscription as any)?.tier || 'free';
                 const isActive = (subscription as any)?.is_active ?? true;
 
+                console.log('[DegenBot] Login - User tier:', userTier, 'isActive:', isActive);
+
                 // CASE 1: User came from Pro/Whale button but registered as Free
                 if ((plan === 'pro' || plan === 'whale') && userTier === 'free') {
-                    setError(`Your account is registered as Free. You cannot access ${plan === 'whale' ? 'Whale' : 'Pro'} features. Please create a new account for ${plan === 'whale' ? 'Whale' : 'Pro'}.`);
+                    const planName = plan === 'whale' ? 'Whale' : 'Pro';
+                    setError(`This account is registered as FREE. You cannot access ${planName} features with a Free account. Please sign up with a new email for ${planName}.`);
                     // Sign out the user
                     await supabase.auth.signOut();
+                    setLoading(false);
                     return;
                 }
 
@@ -86,6 +95,7 @@ function LoginForm() {
                 }, 1000);
             }
         } catch (err: any) {
+            console.error('[DegenBot] Login error:', err);
             setError(err.message || 'An unexpected error occurred');
         } finally {
             setLoading(false);
