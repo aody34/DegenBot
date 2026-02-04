@@ -117,6 +117,148 @@ export interface Database {
                     trades_used?: number;
                 };
             };
+            // ============ COPY TRADING TABLES ============
+            profiles: {
+                Row: {
+                    id: string;
+                    wallet_address: string | null;
+                    sol_balance_limit: number;
+                    is_active: boolean;
+                    telegram_id: string | null;
+                    ai_score_threshold: number;
+                    max_slippage_bps: number;
+                    created_at: string;
+                    updated_at: string;
+                };
+                Insert: {
+                    id: string;
+                    wallet_address?: string;
+                    sol_balance_limit?: number;
+                    is_active?: boolean;
+                    telegram_id?: string;
+                    ai_score_threshold?: number;
+                    max_slippage_bps?: number;
+                };
+                Update: {
+                    wallet_address?: string;
+                    sol_balance_limit?: number;
+                    is_active?: boolean;
+                    telegram_id?: string;
+                    ai_score_threshold?: number;
+                    max_slippage_bps?: number;
+                };
+            };
+            whales: {
+                Row: {
+                    id: string;
+                    address: string;
+                    label: string;
+                    total_trades: number;
+                    win_rate: number;
+                    avg_profit_pct: number;
+                    is_active: boolean;
+                    last_active_at: string | null;
+                    created_at: string;
+                    updated_at: string;
+                };
+                Insert: {
+                    address: string;
+                    label: string;
+                    total_trades?: number;
+                    win_rate?: number;
+                    avg_profit_pct?: number;
+                    is_active?: boolean;
+                };
+                Update: {
+                    label?: string;
+                    total_trades?: number;
+                    win_rate?: number;
+                    avg_profit_pct?: number;
+                    is_active?: boolean;
+                };
+            };
+            signals: {
+                Row: {
+                    id: string;
+                    whale_id: string;
+                    token_address: string;
+                    token_name: string | null;
+                    token_symbol: string | null;
+                    type: 'BUY' | 'SELL';
+                    sol_amount: number | null;
+                    token_amount: number | null;
+                    price_usd: number | null;
+                    ai_score: number;
+                    ai_reasoning: string | null;
+                    tx_hash: string;
+                    status: 'PENDING' | 'EXECUTED' | 'SKIPPED' | 'FAILED';
+                    created_at: string;
+                };
+                Insert: {
+                    whale_id: string;
+                    token_address: string;
+                    token_name?: string;
+                    token_symbol?: string;
+                    type: 'BUY' | 'SELL';
+                    sol_amount?: number;
+                    token_amount?: number;
+                    price_usd?: number;
+                    ai_score?: number;
+                    ai_reasoning?: string;
+                    tx_hash: string;
+                    status?: 'PENDING' | 'EXECUTED' | 'SKIPPED' | 'FAILED';
+                };
+                Update: {
+                    ai_score?: number;
+                    ai_reasoning?: string;
+                    status?: 'PENDING' | 'EXECUTED' | 'SKIPPED' | 'FAILED';
+                };
+            };
+            executed_trades: {
+                Row: {
+                    id: string;
+                    user_id: string;
+                    signal_id: string | null;
+                    whale_id: string | null;
+                    token_address: string;
+                    token_symbol: string | null;
+                    type: 'BUY' | 'SELL';
+                    amount_in_sol: number | null;
+                    tokens_received: number | null;
+                    entry_price: number | null;
+                    exit_price: number | null;
+                    profit_loss: number | null;
+                    profit_pct: number | null;
+                    tx_hash: string | null;
+                    jito_bundle_id: string | null;
+                    status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+                    error_message: string | null;
+                    executed_at: string;
+                    created_at: string;
+                };
+                Insert: {
+                    user_id: string;
+                    signal_id?: string;
+                    whale_id?: string;
+                    token_address: string;
+                    token_symbol?: string;
+                    type: 'BUY' | 'SELL';
+                    amount_in_sol?: number;
+                    tokens_received?: number;
+                    entry_price?: number;
+                    status?: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+                };
+                Update: {
+                    tokens_received?: number;
+                    exit_price?: number;
+                    profit_loss?: number;
+                    profit_pct?: number;
+                    tx_hash?: string;
+                    jito_bundle_id?: string;
+                    status?: 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+                    error_message?: string;
+                };
+            };
         };
     };
 }

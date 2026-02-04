@@ -27,10 +27,14 @@ import {
     Check,
     ExternalLink,
     AlertTriangle,
+    Fish,
+    Radio,
 } from 'lucide-react';
 
 const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+    { icon: Fish, label: '🐋 Whales', href: '/dashboard/whales' },
+    { icon: Radio, label: '📡 Signals', href: '/dashboard/signals' },
     { icon: Briefcase, label: 'Positions', href: '/dashboard/positions' },
     { icon: Target, label: 'Take-Profit', href: '/dashboard/take-profit' },
     { icon: History, label: 'History', href: '/dashboard/history' },
